@@ -30,6 +30,8 @@ class COLORCALIBRATION_API ACalibratedCamera : public ACameraActor
 	bool current_settings = false;
 	UCameraComponent* alterCamera;
 	FPostProcessSettings Normal_settings, Post_settings;
+	TArray<FWeightedBlendable> postTone, preTone;
+	UMaterialInstanceDynamic *premat, *postmat;
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;

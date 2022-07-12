@@ -22,14 +22,18 @@ static FORCEINLINE UMaterial* LoadMaterialFromPath(const FName& Path)
 void ACalibratedCamera::BeginPlay()
 {
 	Super::BeginPlay();
-	FString sPath = "/Game/PreTonemapHDRColor";
+	FString sPath = "/Game/PostTonemap";
 	UMaterial* parent_mat = LoadMaterialFromPath(FName(*sPath));
 	alterCamera = GetCameraComponent();
-	postprocess_material = UMaterialInstanceDynamic::Create(parent_mat, this);
-	TArray<FWeightedBlendable> postArray;
-	postArray.Add(FWeightedBlendable(1.0, postprocess_material));
+	postmat = UMaterialInstanceDynamic::Create(parent_mat, this);
+	postTone.Add(FWeightedBlendable(1.0, postmat));
+
+	sPath = "/Game/PreTonemap";
+	parent_mat = LoadMaterialFromPath(FName(*sPath));
+	premat = UMaterialInstanceDynamic::Create(parent_mat, this);
+	preTone.Add(FWeightedBlendable(1.0, premat));
+	
 	Normal_settings = alterCamera->PostProcessSettings;
-	Post_settings.WeightedBlendables = postArray;
 }
 
 // Called every frame
@@ -44,6 +48,8 @@ void ACalibratedCamera::switch_camera_settings() {
 		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue, TEXT("Normal Camera"));
 	}
 	else {
+		postprocess_material = postmat;
+		Post_settings.WeightedBlendables = postTone;
 		alterCamera->PostProcessSettings = Post_settings;
 		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue, TEXT("Post Camera"));
 	}
@@ -83,15 +89,26 @@ void ACalibratedCamera::Color_Mode_On(float val=0.0f) {
 		Post_settings.bOverride_SceneFringeIntensity = true;
 		Post_settings.bOverride_VignetteIntensity = true;
 		Post_settings.bOverride_GrainIntensity = true;
+		Post_settings.bOverride_AutoExposureMaxBrightness = true;
+		Post_settings.bOverride_AutoExposureMinBrightness = true;
 		Post_settings.AutoExposureBias = 0.0f;
+		Post_settings.AutoExposureMaxBrightness = 1.0f;
+		Post_settings.AutoExposureMinBrightness = 1.0f;
 		Post_settings.BloomIntensity = 0.0f;
 		Post_settings.MotionBlurAmount = 0.0f;
 		Post_settings.GrainJitter = 0.0f;
 		Post_settings.SceneFringeIntensity = 0.0f;
 		Post_settings.VignetteIntensity = 0.0f;
 		Post_settings.GrainIntensity = 0.0f;
+		if (val == 0.0) {
+			postprocess_material = premat;
+			Post_settings.WeightedBlendables = preTone;
+		}
+		else {
+			postprocess_material = postmat;
+			Post_settings.WeightedBlendables = postTone;
+		}
 		alterCamera->PostProcessSettings = Post_settings;
-		postprocess_material->SetScalarParameterValue(FName("On"), val);
 		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue, FString::Printf(TEXT("Post Camera Color Mode On : %f"), val));
 	}
 	return;
@@ -100,14 +117,23 @@ void ACalibratedCamera::Color_Mode_On(float val=0.0f) {
 void ACalibratedCamera::Color_Mode_Off(float val=1.0f) {
 	if (current_settings) {
 		Post_settings.bOverride_AutoExposureBias = false;
+		Post_settings.bOverride_AutoExposureMaxBrightness = false;
+		Post_settings.bOverride_AutoExposureMinBrightness = false;
 		Post_settings.bOverride_BloomIntensity = false;
 		Post_settings.bOverride_MotionBlurAmount = false;
 		Post_settings.bOverride_GrainJitter = false;
 		Post_settings.bOverride_SceneFringeIntensity = false;
 		Post_settings.bOverride_VignetteIntensity = false;
 		Post_settings.bOverride_GrainIntensity = false;
+		if (val == 0.0) {
+			postprocess_material = premat;
+			Post_settings.WeightedBlendables = preTone;
+		}
+		else {
+			postprocess_material = postmat;
+			Post_settings.WeightedBlendables = postTone;
+		}
 		alterCamera->PostProcessSettings = Post_settings;
-		postprocess_material->SetScalarParameterValue(FName("On"), val);
 		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue, FString::Printf(TEXT("Post Camera Color Mode Off : %f"), val));
 	}
 	return;
@@ -115,7 +141,7 @@ void ACalibratedCamera::Color_Mode_Off(float val=1.0f) {
 
 
 void ACalibratedCamera::Update_post_material(FLinearColor color) {
-	postprocess_material->SetVectorParameterValue(FName("Color"), color);
+	//postprocess_material->SetVectorParameterValue(FName("Color"), color);
 }
 
 FLinearColor ACalibratedCamera::confusion_lines_serially() {
@@ -149,7 +175,7 @@ FLinearColor ACalibratedCamera::cube_colors_serially(float start, float end) {
 		}
 	}
 	if (serial >= 0 && serial < corners.Num()) {
-		return corners[serial];
+		return corners[serial++];
 	}
 	else{
 		serial = 0;
