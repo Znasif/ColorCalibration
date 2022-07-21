@@ -6,6 +6,7 @@
 #include "Kismet/BlueprintFunctionLibrary.h"
 //#include "opencv2/core/mat.hpp"
 //#include "opencv2/core.hpp"
+#include "UEigen3/Dense"
 #include "ColorCalibration.generated.h"
 
 USTRUCT(BlueprintType)
@@ -58,16 +59,14 @@ struct FColor_primaries_lxy
 		FColor_lxy White;
 };
 
-UCLASS()
-class COLORCALIBRATION_API UColorConversion : public UBlueprintFunctionLibrary
+UCLASS(BlueprintType)
+class COLORCALIBRATION_API UColorCalibration : public UBlueprintFunctionLibrary
 {
 	GENERATED_BODY()
-		float a, b, x;
-	/*
-	* 	cv::Mat XYZ_to_RGB;
-	cv::Mat RGB_to_XYZ;
 public:
-	UFUNCTION(BlueprintCallable, Category = "Conversion", meta = (Keywords = "OpenCV"))
+	Eigen::Matrix <double, 3, 3> XYZ_to_RGB;
+	Eigen::Matrix <double, 3, 3> RGB_to_XYZ;
+	UFUNCTION(BlueprintCallable, Category = "Conversion", meta = (Keywords = "Eigen3"))
 	void solve(FColor_primaries_lxy recorded);
 
 	UFUNCTION(BlueprintCallable, Category = "Conversion", meta = (Keywords = "lxy"))
@@ -87,5 +86,4 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Conversion", meta = (Keywords = "XYZ"))
 		void convertFromRGB(FLinearColor RGB, FColor_XYZ& retColor);
-	*/
 };

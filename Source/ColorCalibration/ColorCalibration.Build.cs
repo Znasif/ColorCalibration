@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 using UnrealBuildTool;
+using System.IO;
 
 public class ColorCalibration : ModuleRules
 {
@@ -8,7 +9,9 @@ public class ColorCalibration : ModuleRules
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 	
-		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "HeadMountedDisplay", "Eigen"});
+		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "HeadMountedDisplay"});
+
+		PublicIncludePaths.AddRange(new string[] { Path.Combine(ModuleDirectory, "Public", "UEigen3") });
 
 		PrivateDependencyModuleNames.AddRange(new string[] {  });
 

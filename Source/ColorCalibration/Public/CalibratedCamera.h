@@ -8,6 +8,7 @@
 #include "Camera/CameraActor.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Camera/CameraComponent.h"
+#include "../ColorCalibration.h"
 #include "CalibratedCamera.generated.h"
 
 /**
@@ -41,6 +42,9 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "DEBUGGING")
 		int serial = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "DEBUGGING")
+		UColorCalibration* cal_lib;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "DEBUGGING")
 		UMaterialInstanceDynamic* postprocess_material;
