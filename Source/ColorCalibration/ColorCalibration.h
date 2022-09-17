@@ -86,4 +86,16 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Conversion", meta = (Keywords = "XYZ"))
 		void convertFromRGB(FLinearColor RGB, FColor_XYZ& retColor);
+
+	UFUNCTION(BlueprintCallable, Category = "Conversion", meta = (Keywords = "XYZ"))
+		void readPrimariesFromCSV(FString csv_filename, TArray<FColor_lxy> lxys);
+
+	UFUNCTION(BlueprintCallable, Category = "Conversion", meta = (Keywords = "XYZ"))
+		void readPlatePointsFromCSV(FString csv_filename, TArray<FTransform> all_plates);
+
+	UFUNCTION(BlueprintCallable, Category = "Custom", meta = (Keywords = "Load"))
+		static bool LoadTextFromFile(FString FileName, TArray<FString>& TextArray);
+
+	UFUNCTION(BlueprintCallable, Category = "Custom", meta = (Keywords = "Save"))
+		static bool SaveArrayText(FString SaveDirectory, FString FileName, TArray<FString> SaveText, bool AllowOverwriting);
 };

@@ -33,6 +33,7 @@ void ACalibratedCamera::BeginPlay()
 	premat = UMaterialInstanceDynamic::Create(parent_mat, this);
 	preTone.Add(FWeightedBlendable(1.0, premat));
 	
+	cal_lib = NewObject<UColorCalibration>();
 	Normal_settings = alterCamera->PostProcessSettings;
 }
 

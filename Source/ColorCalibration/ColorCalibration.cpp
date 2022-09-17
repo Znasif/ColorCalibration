@@ -76,6 +76,57 @@ void UColorCalibration::convertFromRGB(FLinearColor RGB, FColor_XYZ& retColor)
 	retColor.Z = dst(0, 2);
 }
 
+void UColorCalibration::readPrimariesFromCSV(FString csv_filename, TArray<FColor_lxy> lxys)
+{
+}
+
+void UColorCalibration::readPlatePointsFromCSV(FString csv_filename, TArray<FTransform> all_plates)
+{
+}
+
+bool UColorCalibration::LoadTextFromFile(FString FileName, TArray<FString>& TextArray)
+{
+
+	if (!FPlatformFileManager::Get().GetPlatformFile().FileExists(*FileName))
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue, TEXT("Could not Find File"));
+		return false;
+	}
+	else
+	{
+		// Convert filepath to character array and save to array
+		const TCHAR* FILEPATH = *FileName;
+		return FFileHelper::LoadFileToStringArray(TextArray, *FileName);
+		//return FFileHelper::LoadFileToString(SaveString, *FileName);
+	}
+}
+
+bool UColorCalibration::SaveArrayText(FString SaveDirectory, FString FileName, TArray<FString> SaveText, bool AllowOverwriting = false)
+{
+	// Set complete file path
+	SaveDirectory += "\\";
+	SaveDirectory += FileName;
+
+	if (!AllowOverwriting)
+	{
+		if (FPlatformFileManager::Get().GetPlatformFile().FileExists(*SaveDirectory))
+		{
+			return false;
+		}
+	}
+
+	FPlatformFileManager::Get().GetPlatformFile().DeleteFile(*SaveDirectory);
+	FString FinalString = "";
+	for (FString& Each : SaveText)
+	{
+		FinalString += Each;
+		FinalString += LINE_TERMINATOR;
+	}
+
+	return FFileHelper::SaveStringToFile(FinalString, *SaveDirectory);
+
+}
+
 void UColorCalibration::solve(FColor_primaries_lxy recorded) {
 	//first convert from lxy
 	FColor_XYZ temps[4];
