@@ -76,12 +76,81 @@ void UColorCalibration::convertFromRGB(FLinearColor RGB, FColor_XYZ& retColor)
 	retColor.Z = dst(0, 2);
 }
 
-void UColorCalibration::readPrimariesFromCSV(FString csv_filename, TArray<FColor_lxy> lxys)
+void UColorCalibration::readPrimariesFromCSV(FString csv_filename, TArray<FColor_lxy>& lxys)
 {
+	TArray<FString> TextArray;
+	FString file_path = UKismetSystemLibrary::GetProjectSavedDirectory()+"/Inputs/"+csv_filename;
+	LoadTextFromFile(file_path, TextArray);
+	for (int i = 1; i < TextArray.Num(); i++)
+	{
+		FString left = "";
+		FColor_lxy color_now;
+		int flag = 0;
+		float color_lxy[3] = { 0.0f, 0.0f, 0.0f };
+		FString br = TextArray[i];
+		int j = 0;
+		
+		while (j < br.Len()) {
+			if (br[j] == ',') {
+				if (flag > 0) {
+					color_lxy[flag - 1] = FCString::Atof(*left);
+					//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("Float : %f"), color_lxy[flag-1]));
+				}
+				left = "";
+				flag++;
+			}
+			else {
+				left += br[j];
+			}
+			j++;
+		}
+		color_lxy[flag - 1] = FCString::Atof(*left);
+		//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("Float : %f"), color_lxy[flag - 1]));
+
+		color_now.l = color_lxy[0];
+		color_now.x = color_lxy[1];
+		color_now.y = color_lxy[2];
+		lxys.Add(color_now);
+	}
 }
 
-void UColorCalibration::readPlatePointsFromCSV(FString csv_filename, TArray<FTransform> all_plates)
+void UColorCalibration::readPlatePointsFromCSV(FString csv_filename, TArray<FTransform>& all_plates)
 {
+	TArray<FString> TextArray;
+	FString file_path = UKismetSystemLibrary::GetProjectSavedDirectory() + "/Inputs/" + csv_filename;
+	LoadTextFromFile(file_path, TextArray);
+	for (int i = 1; i < TextArray.Num(); i++)
+	{
+		FString left = "";
+		
+		int flag = 0;
+		float trsform[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+		FString br = TextArray[i];
+		int j = 0;
+		
+
+		while (j < br.Len()) {
+			if (br[j] == ',') {
+				if (flag > 0) {
+					trsform[flag - 1] = FCString::Atof(*left);
+					//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::White, FString::Printf(TEXT("Float : %f"), trsform[flag-1]));
+				}
+				left = "";
+				flag++;
+			}
+			else {
+				left += br[j];
+			}
+			j++;
+		}
+		trsform[flag - 1] = FCString::Atof(*left);
+		//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::White, FString::Printf(TEXT("Float : %f"), trsform[flag - 1]));
+		
+		FTransform trsform_now;
+		trsform_now.SetLocation(FVector(trsform[0], trsform[1], trsform[2]));
+		trsform_now.SetScale3D(FVector(1.0, trsform[3], trsform[3]));
+		all_plates.Add(trsform_now);
+	}
 }
 
 bool UColorCalibration::LoadTextFromFile(FString FileName, TArray<FString>& TextArray)

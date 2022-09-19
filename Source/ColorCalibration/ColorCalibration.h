@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
+#include "Kismet/KismetSystemLibrary.h"
 //#include "opencv2/core/mat.hpp"
 //#include "opencv2/core.hpp"
 #include "UEigen3/Dense"
@@ -88,10 +89,10 @@ public:
 		void convertFromRGB(FLinearColor RGB, FColor_XYZ& retColor);
 
 	UFUNCTION(BlueprintCallable, Category = "Conversion", meta = (Keywords = "XYZ"))
-		void readPrimariesFromCSV(FString csv_filename, TArray<FColor_lxy> lxys);
+		void readPrimariesFromCSV(FString csv_filename, TArray<FColor_lxy>& lxys);
 
 	UFUNCTION(BlueprintCallable, Category = "Conversion", meta = (Keywords = "XYZ"))
-		void readPlatePointsFromCSV(FString csv_filename, TArray<FTransform> all_plates);
+		void readPlatePointsFromCSV(FString csv_filename, TArray<FTransform>& all_plates);
 
 	UFUNCTION(BlueprintCallable, Category = "Custom", meta = (Keywords = "Load"))
 		static bool LoadTextFromFile(FString FileName, TArray<FString>& TextArray);
