@@ -6,7 +6,7 @@
 IMPLEMENT_PRIMARY_GAME_MODULE( FDefaultGameModuleImpl, ColorCalibration, "ColorCalibration" );
 
 
-void UColorCalibration::convertFromlxy(FColor_lxy lxy, FLinearColor& retColor)
+void UColorCalibration::convertFromlxytoRGB(FColor_lxy lxy, FLinearColor& retColor)
 {
 	FColor_XYZ temp;
 	convertFromlxyToXYZ(lxy, temp);
@@ -30,7 +30,7 @@ void UColorCalibration::convertFromlxyToXYZ(FColor_lxy lxy, FColor_XYZ& retColor
 	}
 }
 
-void UColorCalibration::convertFromLuv(FColor_Luv Luv, FLinearColor& retColor)
+void UColorCalibration::convertFromLuvtolxy(FColor_Luv Luv, FColor_lxy& retColor)
 {
 	float d;
 	FColor_lxy lxy;
@@ -38,7 +38,14 @@ void UColorCalibration::convertFromLuv(FColor_Luv Luv, FLinearColor& retColor)
 	d = 6 * Luv.u - 16 * Luv.v + 12;
 	lxy.x = 9 * Luv.u / d;
 	lxy.y = 4 * Luv.v / d;
-	convertFromlxy(lxy, retColor);
+	retColor = lxy;
+}
+
+void UColorCalibration::convertFromLuvtoRGB(FColor_Luv Luv, FLinearColor& retColor)
+{
+	FColor_lxy lxy;
+	convertFromLuvtolxy(Luv, lxy);
+	convertFromlxytoRGB(lxy, retColor);
 }
 
 void UColorCalibration::convertFromLuvToXYZ(FColor_Luv Luv, FColor_XYZ& retColor)
@@ -52,7 +59,22 @@ void UColorCalibration::convertFromLuvToXYZ(FColor_Luv Luv, FColor_XYZ& retColor
 	convertFromlxyToXYZ(lxy, retColor);
 }
 
-void UColorCalibration::convertFromXYZ(FColor_XYZ XYZ, FLinearColor& retColor)
+void UColorCalibration::convertFromXYZtolxy(FColor_XYZ XYZ, FColor_lxy& retColor)
+{
+	float d = XYZ.X + XYZ.Y + XYZ.Z;
+	if (d == 0) {
+		retColor.l = 0.0f;
+		retColor.x = 0.0f;
+		retColor.y = 0.0f;
+	}
+	else {
+		retColor.l = XYZ.Y * max_lum;
+		retColor.x = XYZ.X / d;
+		retColor.y = XYZ.Y / d;
+	}
+}
+
+void UColorCalibration::convertFromXYZtoRGB(FColor_XYZ XYZ, FLinearColor& retColor)
 {
 	Eigen::Matrix <double, 1, 3> temp;
 	//cv::Mat temp(1, 3, CV_32F, cv::Scalar(0));
@@ -64,7 +86,7 @@ void UColorCalibration::convertFromXYZ(FColor_XYZ XYZ, FLinearColor& retColor)
 	retColor.B = dst(0, 2);
 }
 
-void UColorCalibration::convertFromRGB(FLinearColor RGB, FColor_XYZ& retColor)
+void UColorCalibration::convertFromRGBtoXYZ(FLinearColor RGB, FColor_XYZ& retColor)
 {
 	Eigen::Matrix <double, 1, 3> temp;
 	//cv::Mat temp(1, 3, CV_32F, cv::Scalar(0));
@@ -112,6 +134,9 @@ void UColorCalibration::readPrimariesFromCSV(FString csv_filename, TArray<FColor
 		color_now.y = color_lxy[2];
 		lxys.Add(color_now);
 	}
+	max_lum = lxys[3].l;
+	FColor_primaries_lxy primaries(lxys[0], lxys[1], lxys[2], lxys[3]);
+	solve(primaries);
 }
 
 void UColorCalibration::readPlatePointsFromCSV(FString csv_filename, TArray<FTransform>& all_plates)
@@ -122,12 +147,12 @@ void UColorCalibration::readPlatePointsFromCSV(FString csv_filename, TArray<FTra
 	for (int i = 1; i < TextArray.Num(); i++)
 	{
 		FString left = "";
-		
+
 		int flag = 0;
 		float trsform[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
 		FString br = TextArray[i];
 		int j = 0;
-		
+
 
 		while (j < br.Len()) {
 			if (br[j] == ',') {
@@ -145,10 +170,12 @@ void UColorCalibration::readPlatePointsFromCSV(FString csv_filename, TArray<FTra
 		}
 		trsform[flag - 1] = FCString::Atof(*left);
 		//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::White, FString::Printf(TEXT("Float : %f"), trsform[flag - 1]));
-		
+
 		FTransform trsform_now;
 		trsform_now.SetLocation(FVector(trsform[0], trsform[1], trsform[2]));
-		trsform_now.SetScale3D(FVector(1.0, trsform[3], trsform[3]));
+		trsform[3] = FMath::Sqrt(trsform[3]) / 100.0;
+		trsform_now.SetScale3D(FVector(0.0, trsform[3], trsform[3]));
+
 		all_plates.Add(trsform_now);
 	}
 }
@@ -194,6 +221,144 @@ bool UColorCalibration::SaveArrayText(FString SaveDirectory, FString FileName, T
 
 	return FFileHelper::SaveStringToFile(FinalString, *SaveDirectory);
 
+}
+
+void UColorCalibration::LoadDirectionPlates(int direction, TArray<int>& direction_nums)
+{
+	int up0[] = { 232, 234, 258, 260, 261, 262, 264, 267, 272, 282, 295, 297, 299, 305, 306, 307, 308, 309, 310, 312, 313, 314, 315, 316, 317, 318, 330, 334, 350, 335, 352, 336, 337, 338, 339, 340, 341, 342, 343, 344, 345, 346, 347, 348, 349, 350, 351, 353, 354, 355, 356, 357, 358, 359, 360, 361, 362, 363, 364, 365, 366, 367, 368, 369, 371, 372, 375, 376, 377, 378, 379, 380, 381, 382, 383, 384, 385, 386, 387, 388, 389, 390, 391, 392, 393, 394, 395, 396, 397, 398, 399, 400, 401, 402, 403, 404, 405, 406, 411, 412, 431, 432, 433, 434, 435, 436, 437, 438, 439, 440, 441, 442, 443, 444, 458, 459, 460, 463, 464, 465, 466, 467, 468, 469, 470, 471, 472, 473, 475, 477, 478, 479, 480, 481, 482, 483, 486, 488, 516, 519, 520 };
+	int up1[] = {135, 136, 164, 177, 178, 179, 180, 182, 183, 184, 185, 186, 187, 188, 189, 190, 191, 192, 193, 194, 195, 196, 198, 207, 214, 215, 216, 224, 225, 227, 228, 229, 230, 231, 232, 233, 234, 235, 236, 244, 245, 246, 248, 249, 250, 251, 252, 253, 254, 255, 256, 257, 258, 259, 260, 261, 262, 263, 264, 265, 266, 267, 268, 269, 271, 272, 273, 274, 275, 276, 277, 279, 280, 281, 282, 283, 284, 285, 286, 287, 288, 289, 290, 291, 292, 293, 294, 295, 296, 297, 298, 299, 300, 301, 303, 304, 305, 306, 307, 308, 309, 310, 311, 312, 313, 314, 315, 316, 317, 318, 319, 329, 330, 331, 332, 333, 348, 334, 350, 335, 352, 336, 337, 338, 339, 340, 341, 342, 343, 344, 345, 346, 347, 348, 349, 350, 351, 352, 353, 354, 355, 356, 357, 358, 359, 360, 361, 362, 363, 364, 365, 366, 367, 368, 369, 370, 371, 372, 373, 374, 375, 376, 377, 378, 379, 380, 381, 382, 383, 384, 385, 386, 387, 388, 389, 390, 391, 392, 393, 394, 395, 396, 397, 398, 399, 400, 401, 402, 403, 404, 405, 406, 411, 412, 413, 433, 434, 435, 436, 437, 438, 439, 440, 441, 442, 443, 444, 458, 459, 460, 463, 465, 468, 469, 470, 472, 479, 480, 481, 482, 483, 516, 519, 520};
+	int left0[] = {214, 215, 232, 234, 236, 243, 260, 261, 262, 264, 275, 282, 283, 290, 291, 293, 294, 295, 296, 297, 298, 299, 300, 301, 303, 304, 305, 306, 307, 308, 309, 310, 312, 313, 314, 315, 316, 317, 318, 319, 320, 321, 324, 325, 327, 328, 329, 330, 346, 347, 348, 349, 350, 353, 354, 355, 356, 357, 358, 359, 360, 361, 362, 363, 364, 365, 366, 367, 368, 369, 370, 371, 372, 373, 374, 375, 376, 377, 378, 381, 382, 393, 395, 396, 397, 398, 399, 400, 404, 405, 406, 411, 412, 413, 414, 415, 416, 417, 418, 419, 420, 421, 429, 431, 432, 433, 434, 435, 437, 438, 439, 440, 458, 459, 460, 463, 465, 469, 470, 471, 472, 479, 480, 481, 559, 560, 579, 581, 583};
+	int left1[] = {124, 125, 126, 145, 146, 147, 164, 165, 167, 168, 170, 172, 174, 175, 176, 177, 178, 179, 180, 181, 182, 183, 194, 195, 198, 202, 203, 204, 205, 206, 207, 208, 209, 210, 214, 215, 216, 224, 225, 227, 228, 229, 230, 231, 232, 233, 234, 235, 236, 237, 238, 239, 240, 241, 242, 243, 244, 245, 246, 248, 249, 250, 251, 252, 253, 254, 261, 262, 263, 264, 265, 266, 267, 268, 269, 271, 272, 273, 274, 275, 276, 277, 278, 279, 280, 281, 282, 283, 284, 285, 286, 287, 288, 289, 290, 291, 292, 293, 294, 295, 296, 297, 298, 299, 300, 301, 303, 304, 305, 306, 307, 308, 309, 310, 311, 312, 313, 314, 315, 316, 317, 318, 319, 320, 321, 322, 323, 324, 325, 326, 327, 328, 329, 330, 331, 332, 333, 348, 334, 350, 335, 352, 336, 337, 338, 347, 348, 349, 350, 351, 352, 353, 354, 355, 356, 357, 358, 359, 360, 361, 362, 363, 364, 365, 366, 367, 368, 369, 370, 371, 372, 373, 374, 375, 376, 377, 378, 379, 380, 381, 382, 383, 384, 385, 386, 387, 388, 389, 390, 391, 392, 393, 394, 395, 396, 397, 398, 399, 400, 401, 402, 403, 404, 405, 406, 411, 412, 413, 414, 415, 416, 417, 418, 419, 420, 421, 429, 432, 433, 434, 435, 436, 437, 438, 439, 440, 441, 458, 459, 460, 463, 465, 469, 470, 472, 479, 480, 481, 483, 516, 519, 520, 552, 590, 559, 560};
+	int down0[] = {125, 135, 136, 164, 165, 167, 168, 170, 172, 174, 175, 176, 177, 178, 179, 180, 182, 183, 184, 185, 186, 187, 188, 189, 190, 191, 192, 193, 194, 195, 196, 198, 214, 215, 216, 224, 225, 227, 228, 229, 230, 231, 232, 233, 234, 235, 236, 237, 238, 239, 240, 241, 242, 243, 244, 245, 246, 248, 249, 250, 251, 252, 253, 254, 255, 256, 257, 258, 259, 260, 261, 262, 263, 264, 265, 266, 267, 268, 269, 271, 272, 273, 274, 275, 285, 286, 287, 288, 289, 290, 291, 292, 293, 294, 295, 296, 297, 298, 299, 300, 301, 303, 304, 305, 306, 307, 308, 309, 310, 311, 312, 313, 314, 315, 316, 317, 318, 319, 320, 321, 322, 323, 324, 325, 326, 327, 328, 329, 330, 331, 332, 333, 348, 334, 350, 335, 352, 336, 337, 338, 339, 340, 341, 342, 343, 344, 345, 346, 347, 348, 349, 350, 351, 352, 353, 354, 355, 356, 357, 358, 359, 360, 369, 370, 371, 372, 373, 374, 375, 376, 377, 378, 379, 380, 381, 382, 383, 384, 385, 386, 387, 388, 389, 390, 391, 392, 393, 394, 395, 396, 397, 398, 399, 400, 401, 402, 403, 404, 405, 406, 411, 412, 413, 414, 415, 416, 417, 418, 419, 420, 421, 429, 433, 434, 435, 436, 437, 438, 439, 440, 441, 442, 443, 444, 458, 459, 460, 463, 465, 479, 480, 481, 482, 483, 516, 519, 520, 559, 560};
+	int down1[] = {135, 136, 164, 176, 177, 178, 179, 180, 182, 183, 184, 185, 186, 187, 188, 189, 190, 191, 192, 193, 194, 195, 196, 198, 207, 214, 215, 216, 224, 225, 227, 228, 229, 230, 231, 232, 233, 234, 235, 236, 237, 241, 242, 243, 244, 245, 246, 248, 249, 250, 251, 252, 253, 254, 255, 256, 257, 258, 259, 260, 261, 262, 263, 264, 265, 266, 267, 268, 269, 271, 272, 273, 282, 283, 284, 285, 286, 287, 288, 289, 290, 291, 292, 293, 294, 295, 296, 297, 298, 299, 300, 301, 303, 304, 305, 306, 307, 308, 309, 310, 311, 312, 313, 314, 315, 316, 317, 318, 319, 320, 321, 322, 323, 324, 325, 326, 327, 328, 329, 330, 331, 332, 333, 348, 334, 350, 335, 352, 336, 337, 338, 339, 340, 341, 342, 343, 344, 345, 346, 347, 348, 349, 350, 351, 352, 353, 354, 355, 356, 357, 358, 359, 364, 365, 366, 367, 368, 369, 370, 371, 372, 373, 374, 375, 376, 377, 378, 379, 380, 381, 382, 383, 384, 385, 386, 387, 388, 389, 390, 391, 392, 393, 394, 395, 396, 397, 398, 399, 400, 401, 402, 403, 404, 405, 406, 411, 412, 413, 414, 415, 416, 417, 418, 419, 420, 421, 429, 433, 434, 435, 436, 437, 438, 439, 440, 441, 442, 443, 444, 458, 459, 460, 463, 479, 480, 481, 482, 483, 516, 519, 520, 559, 560};
+	int right0[] = {135, 136, 164, 177, 178, 179, 180, 182, 183, 184, 185, 186, 187, 188, 189, 190, 191, 192, 193, 194, 195, 196, 198, 207, 214, 225, 227, 228, 229, 230, 231, 232, 233, 234, 235, 236, 237, 239, 241, 242, 243, 244, 245, 246, 248, 249, 250, 251, 252, 253, 254, 255, 256, 257, 258, 259, 260, 261, 262, 263, 264, 265, 266, 267, 268, 269, 271, 272, 273, 274, 275, 276, 277, 279, 280, 281, 282, 283, 284, 285, 286, 287, 288, 289, 290, 291, 292, 293, 294, 295, 296, 297, 298, 305, 306, 307, 308, 309, 310, 311, 312, 313, 314, 315, 316, 317, 318, 319, 320, 321, 322, 323, 324, 325, 326, 327, 328, 329, 330, 331, 332, 333, 348, 334, 350, 335, 352, 336, 337, 338, 339, 340, 341, 342, 343, 344, 345, 346, 347, 348, 349, 350, 351, 352, 353, 354, 355, 356, 357, 358, 359, 360, 361, 362, 363, 364, 365, 366, 367, 368, 369, 370, 371, 372, 373, 374, 375, 376, 377, 378, 379, 380, 381, 382, 383, 384, 385, 386, 387, 388, 389, 400, 401, 402, 403, 404, 405, 406, 411, 412, 413, 414, 415, 416, 417, 418, 419, 420, 421, 422, 423, 424, 433, 434, 435, 436, 437, 438, 439, 440, 441, 442, 443, 444, 458, 459, 460, 463, 465, 468, 469, 470, 472, 479, 480, 481, 482, 483, 559, 560};
+	int right1[] = {135, 136, 164, 177, 178, 179, 180, 182, 183, 184, 185, 186, 187, 188, 189, 190, 191, 192, 193, 194, 195, 196, 198, 199, 200, 202, 203, 204, 206, 207, 222, 223, 224, 225, 226, 227, 228, 229, 230, 231, 232, 233, 234, 235, 236, 237, 239, 241, 242, 243, 244, 245, 246, 248, 249, 250, 251, 252, 253, 254, 255, 256, 257, 258, 259, 260, 261, 262, 263, 264, 265, 266, 267, 268, 269, 270, 271, 272, 273, 274, 275, 276, 277, 278, 279, 280, 281, 282, 283, 284, 285, 286, 287, 288, 289, 290, 291, 292, 293, 294, 304, 305, 306, 307, 308, 309, 310, 311, 312, 313, 314, 315, 316, 317, 318, 319, 320, 321, 322, 323, 324, 325, 326, 327, 328, 329, 330, 331, 332, 333, 348, 334, 350, 335, 352, 336, 337, 338, 339, 340, 341, 342, 343, 344, 345, 346, 347, 348, 349, 350, 351, 352, 353, 354, 355, 356, 357, 358, 359, 360, 361, 362, 363, 364, 365, 366, 367, 368, 369, 370, 371, 372, 373, 374, 375, 376, 377, 378, 379, 380, 381, 382, 383, 384, 385, 399, 400, 401, 402, 403, 404, 405, 406, 411, 412, 413, 414, 415, 416, 417, 418, 419, 420, 421, 422, 423, 424, 429, 433, 434, 435, 436, 437, 438, 439, 440, 441, 442, 443, 444, 458, 459, 460, 463, 465, 468, 469, 470, 472, 479, 480, 481, 482, 483, 518, 519, 520, 521, 559, 560};
+	direction_nums.Empty();
+	switch (direction)
+	{
+	case 0:
+		if (FMath::RandBool()) {
+			direction_nums.Append(up0, UE_ARRAY_COUNT(up0));
+		}
+		else {
+			direction_nums.Append(up1, UE_ARRAY_COUNT(up1));
+		}
+	case 1:
+		if (FMath::RandBool()) {
+			direction_nums.Append(left0, UE_ARRAY_COUNT(left0));
+		}
+		else {
+			direction_nums.Append(left1, UE_ARRAY_COUNT(left1));
+		}
+	case 2:
+		if (FMath::RandBool()) {
+			direction_nums.Append(down0, UE_ARRAY_COUNT(down0));
+		}
+		else {
+			direction_nums.Append(down1, UE_ARRAY_COUNT(down1));
+		}
+	case 3:
+		if (FMath::RandBool()) {
+			direction_nums.Append(right0, UE_ARRAY_COUNT(right0));
+		}
+		else {
+			direction_nums.Append(right1, UE_ARRAY_COUNT(right1));
+		}
+	default:
+		break;
+	}
+}
+
+void UColorCalibration::ConfusionPoints(int confusion_line, FColor_lxy& start, FColor_lxy& end) {
+	FColor_Luv Luv_starts[] = {FColor_Luv(0.217169819, 0.468878767), FColor_Luv(0.217030009, 0.458258869), FColor_Luv(0.200289048, 0.447181003)};
+	FColor_Luv Luv_ends[] = { FColor_Luv(0.308435721, 0.474292894), FColor_Luv(0.299623829, 0.431180807), FColor_Luv(0.209764962, 0.356921098)};
+	convertFromLuvtolxy(Luv_starts[confusion_line], start);
+	convertFromLuvtolxy(Luv_ends[confusion_line], end);
+}
+
+void UColorCalibration::NeutralPoints(FColor_lxy& lxy) {
+	FColor_Luv Luv_neutrals = FColor_Luv(0.1977, 0.4689);
+	convertFromLuvtolxy(Luv_neutrals, lxy);
+}
+
+void UColorCalibration::TrivectorTest(int start_thresh, TArray<AStaticMeshActor*> all_plates)
+{
+	int confusion_line = 0, direction = 0;
+	int threshold = 10, correct_threshold = start_thresh, incorrect_threshold = 100, temp_thresh;
+	
+	do {
+		response_submitted = false;
+		confusion_line = 3*FMath::FRand();
+		direction = 3 * FMath::FRand();
+		while (!response_submitted) {
+			AlterPlateColors(direction, all_plates, confusion_line, threshold);
+		}
+		bool correct = response == direction;
+		if (correct) {
+			correct_threshold = threshold;
+		}
+		else {
+			incorrect_threshold = threshold;
+		}
+		updateThreshold(correct_threshold, incorrect_threshold, temp_thresh);
+		if (threshold == temp_thresh) {
+			break;
+		}
+		else {
+			threshold = temp_thresh;
+		}
+		if (!correct && threshold == start_thresh) {
+			break;
+		}
+		if (correct && threshold == 1) break;
+	} while (true);
+}
+
+void UColorCalibration::updateThreshold(int correct, int incorrect, int& threshold)
+{
+	threshold = (correct + incorrect) / 2;
+}
+
+void UColorCalibration::AlterPlateColors(int direction, TArray<AStaticMeshActor*> all_plates, int confusion_line, int threshold)
+{
+	UMaterialInterface* parent_mat = all_plates[0]->GetStaticMeshComponent()->GetMaterial(0);
+	FColor_lxy neutral_points;
+	FLinearColor neutral_color;
+	int steps = 10;
+
+	NeutralPoints(neutral_points);
+	for (int i = 0; i < all_plates.Num(); i++) {
+		UMaterialInstanceDynamic* back_plate_mat = UMaterialInstanceDynamic::Create(parent_mat, this);
+		//Update background
+		ColorInterp(neutral_points, neutral_points, 1, steps, neutral_color);
+		back_plate_mat->SetVectorParameterValue(FName("Color"), neutral_color);
+		all_plates[i]->GetStaticMeshComponent()->SetMaterial(0, back_plate_mat);
+	}
+	
+	FColor_lxy start, end;
+	ConfusionPoints(confusion_line, start, end);
+	TArray<int> direction_plates_num;
+	FLinearColor confusion_color;
+	LoadDirectionPlates(direction, direction_plates_num);
+	for (int i = 0; i < direction_plates_num.Num(); i++) {
+		int j = direction_plates_num[i];
+		UMaterialInstanceDynamic* front_plate_mat = UMaterialInstanceDynamic::Create(parent_mat, this);
+		//Update foreground color
+		ColorInterp(start, end, threshold, steps, confusion_color);
+		front_plate_mat->SetVectorParameterValue(FName("Color"), confusion_color);
+		all_plates[j]->GetStaticMeshComponent()->SetMaterial(0, front_plate_mat);
+	}
+}
+
+void UColorCalibration::ColorInterp(FColor_lxy start, FColor_lxy end, int threshold, int steps, FLinearColor& plate_color)
+{
+	FColor_lxy threshold_color;
+	threshold_color.x = start.x + (threshold * (end.x - start.x) / steps);
+	threshold_color.y = start.y + (threshold * (end.y - start.y) / steps);
+	threshold_color.l = (FMath::FRand() * 17.0f + 7.6f) / 100.0f;
+	FColor_XYZ XYZ;
+	convertFromlxyToXYZ(threshold_color, XYZ);
+	convertFromXYZtoRGB(XYZ, plate_color);
 }
 
 void UColorCalibration::solve(FColor_primaries_lxy recorded) {

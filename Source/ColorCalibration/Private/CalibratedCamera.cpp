@@ -37,6 +37,12 @@ void ACalibratedCamera::BeginPlay()
 	Normal_settings = alterCamera->PostProcessSettings;
 }
 
+void ACalibratedCamera::initialize_color_assist(FString primaries_filename, FString plates_filename, TArray<FTransform>& all_plates) {
+	TArray<FColor_lxy> primaries;
+	cal_lib->readPrimariesFromCSV(primaries_filename, primaries);
+	cal_lib->readPlatePointsFromCSV(plates_filename, all_plates);
+}
+
 // Called every frame
 void ACalibratedCamera::Tick(float DeltaTime)
 {

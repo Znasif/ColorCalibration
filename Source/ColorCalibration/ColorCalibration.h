@@ -8,6 +8,7 @@
 //#include "opencv2/core/mat.hpp"
 //#include "opencv2/core.hpp"
 #include "UEigen3/Dense"
+#include "Engine/StaticMeshActor.h"
 #include "ColorCalibration.generated.h"
 
 USTRUCT(BlueprintType)
@@ -26,12 +27,24 @@ USTRUCT(BlueprintType)
 struct FColor_Luv
 {
 	GENERATED_USTRUCT_BODY()
-		UPROPERTY(BlueprintReadWrite, Category = "Luminance in cd/m2")
+	UPROPERTY(BlueprintReadWrite, Category = "Luminance in cd/m2")
 		float L;
 	UPROPERTY(BlueprintReadWrite, Category = "u")
 		float u;
 	UPROPERTY(BlueprintReadWrite, Category = "v")
 		float v;
+
+	FColor_Luv() {
+		this->L = 0;
+		this->u = 0;
+		this->v = 0;
+	}
+	
+	FColor_Luv(float u, float v) {
+			this->L = 1;
+			this->u = u;
+			this->v = v;
+		}
 };
 
 USTRUCT(BlueprintType)
@@ -58,40 +71,65 @@ struct FColor_primaries_lxy
 		FColor_lxy Blue;
 	UPROPERTY(BlueprintReadWrite, Category = "Red")
 		FColor_lxy White;
+	
+	FColor_primaries_lxy() {
+
+	}
+
+	FColor_primaries_lxy(FColor_lxy r, FColor_lxy g, FColor_lxy b, FColor_lxy w) {
+		this->Red = r;
+		this->Green = g;
+		this->Blue = b;
+		this->White = w;
+	}
 };
 
 UCLASS(BlueprintType)
-class COLORCALIBRATION_API UColorCalibration : public UBlueprintFunctionLibrary
+class COLORCALIBRATION_API UColorCalibration : public UObject
 {
 	GENERATED_BODY()
 public:
 	Eigen::Matrix <double, 3, 3> XYZ_to_RGB;
 	Eigen::Matrix <double, 3, 3> RGB_to_XYZ;
+	float max_lum = 100.0f;
+
+	UPROPERTY(BlueprintReadWrite, Category = "response")
+		bool response_submitted = false;
+
+	UPROPERTY(BlueprintReadWrite, Category = "response")
+		int response;
+
 	UFUNCTION(BlueprintCallable, Category = "Conversion", meta = (Keywords = "Eigen3"))
 	void solve(FColor_primaries_lxy recorded);
 
 	UFUNCTION(BlueprintCallable, Category = "Conversion", meta = (Keywords = "lxy"))
-		void convertFromlxy(FColor_lxy lxy, FLinearColor& retColor);
+		void convertFromlxytoRGB(FColor_lxy lxy, FLinearColor& retColor);
 
 	UFUNCTION(BlueprintCallable, Category = "Conversion", meta = (Keywords = "lxy"))
 		void convertFromlxyToXYZ(FColor_lxy lxy, FColor_XYZ& retColor);
 
 	UFUNCTION(BlueprintCallable, Category = "Conversion", meta = (Keywords = "Luv"))
-		void convertFromLuv(FColor_Luv Luv, FLinearColor& retColor);
+		void convertFromLuvtoRGB(FColor_Luv Luv, FLinearColor& retColor);
 
 	UFUNCTION(BlueprintCallable, Category = "Conversion", meta = (Keywords = "lxy"))
 		void convertFromLuvToXYZ(FColor_Luv lxy, FColor_XYZ& retColor);
 
-	UFUNCTION(BlueprintCallable, Category = "Conversion", meta = (Keywords = "XYZ"))
-		void convertFromXYZ(FColor_XYZ XYZ, FLinearColor& retColor);
+	UFUNCTION(BlueprintCallable, Category = "Conversion", meta = (Keywords = "lxy"))
+		void convertFromLuvtolxy(FColor_Luv Luv, FColor_lxy& retColor);
+
+	UFUNCTION(BlueprintCallable, Category = "Conversion", meta = (Keywords = "lxy"))
+		void convertFromXYZtolxy(FColor_XYZ lxy, FColor_lxy& retColor);
 
 	UFUNCTION(BlueprintCallable, Category = "Conversion", meta = (Keywords = "XYZ"))
-		void convertFromRGB(FLinearColor RGB, FColor_XYZ& retColor);
+		void convertFromXYZtoRGB(FColor_XYZ XYZ, FLinearColor& retColor);
 
 	UFUNCTION(BlueprintCallable, Category = "Conversion", meta = (Keywords = "XYZ"))
+		void convertFromRGBtoXYZ(FLinearColor RGB, FColor_XYZ& retColor);
+
+	UFUNCTION(BlueprintCallable, Category = "Conversion", meta = (Keywords = "Primaries"))
 		void readPrimariesFromCSV(FString csv_filename, TArray<FColor_lxy>& lxys);
 
-	UFUNCTION(BlueprintCallable, Category = "Conversion", meta = (Keywords = "XYZ"))
+	UFUNCTION(BlueprintCallable, Category = "Conversion", meta = (Keywords = "Plates"))
 		void readPlatePointsFromCSV(FString csv_filename, TArray<FTransform>& all_plates);
 
 	UFUNCTION(BlueprintCallable, Category = "Custom", meta = (Keywords = "Load"))
@@ -99,4 +137,25 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Custom", meta = (Keywords = "Save"))
 		static bool SaveArrayText(FString SaveDirectory, FString FileName, TArray<FString> SaveText, bool AllowOverwriting);
+
+	UFUNCTION(BlueprintCallable, Category = "Custom", meta = (Keywords = "Plates"))
+		void LoadDirectionPlates(int direction, TArray<int>& direction_nums);
+
+	UFUNCTION(BlueprintCallable, Category = "Custom", meta = (Keywords = "Plates"))
+		void AlterPlateColors(int direction, TArray<AStaticMeshActor*> all_plates, int confusion_line, int threshold);
+
+	UFUNCTION(BlueprintCallable, Category = "Custom", meta = (Keywords = "Confusion Line"))
+		void ColorInterp(FColor_lxy start, FColor_lxy end, int threshold, int steps, FLinearColor& plate_color);
+
+	UFUNCTION(BlueprintCallable, Category = "Custom", meta = (Keywords = "Confusion Line"))
+		void ConfusionPoints(int confusion_line, FColor_lxy& start, FColor_lxy& end);
+	
+	UFUNCTION(BlueprintCallable, Category = "Custom", meta = (Keywords = "Confusion Line"))
+		void NeutralPoints(FColor_lxy& lxy);
+
+	UFUNCTION(BlueprintCallable, Category = "Custom", meta = (Keywords = "Confusion Line"))
+		void TrivectorTest(int start_thresh, TArray<AStaticMeshActor*> all_plates);
+
+	UFUNCTION(BlueprintCallable, Category = "Custom", meta = (Keywords = "Confusion Line"))
+		void updateThreshold(int correct, int incorrect, int& threshold);
 };
