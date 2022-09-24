@@ -2,6 +2,9 @@
 
 #pragma once
 
+
+#define CONFUSION_ALONG 3
+
 #include "CoreMinimal.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "Kismet/KismetSystemLibrary.h"
@@ -88,16 +91,19 @@ UCLASS(BlueprintType)
 class COLORCALIBRATION_API UColorCalibration : public UObject
 {
 	GENERATED_BODY()
+	TArray<int> threshold;
+	TArray<int> correct_threshold;
+	TArray<int> incorrect_threshold;
+	TArray<int> temp_thresh;
+	TArray<int> start_thresh;
 public:
 	Eigen::Matrix <double, 3, 3> XYZ_to_RGB;
 	Eigen::Matrix <double, 3, 3> RGB_to_XYZ;
 	float max_lum = 100.0f;
 
-	UPROPERTY(BlueprintReadWrite, Category = "response")
-		bool response_submitted = false;
+	bool test_done = false;
 
-	UPROPERTY(BlueprintReadWrite, Category = "response")
-		int response;
+	TArray<AStaticMeshActor*> all_plates;
 
 	UFUNCTION(BlueprintCallable, Category = "Conversion", meta = (Keywords = "Eigen3"))
 	void solve(FColor_primaries_lxy recorded);
@@ -130,7 +136,7 @@ public:
 		void readPrimariesFromCSV(FString csv_filename, TArray<FColor_lxy>& lxys);
 
 	UFUNCTION(BlueprintCallable, Category = "Conversion", meta = (Keywords = "Plates"))
-		void readPlatePointsFromCSV(FString csv_filename, TArray<FTransform>& all_plates);
+		void readPlatePointsFromCSV(FString csv_filename, int start_threshold, TArray<FTransform>& all_plates);
 
 	UFUNCTION(BlueprintCallable, Category = "Custom", meta = (Keywords = "Load"))
 		static bool LoadTextFromFile(FString FileName, TArray<FString>& TextArray);
@@ -142,10 +148,13 @@ public:
 		void LoadDirectionPlates(int direction, TArray<int>& direction_nums);
 
 	UFUNCTION(BlueprintCallable, Category = "Custom", meta = (Keywords = "Plates"))
-		void AlterPlateColors(int direction, TArray<AStaticMeshActor*> all_plates, int confusion_line, int threshold);
+		void LoadAllPlatesMeshActor(TArray<AStaticMeshActor*> all_plates_actors);
+
+	UFUNCTION(BlueprintCallable, Category = "Custom", meta = (Keywords = "Plates"))
+		void AlterPlateColors(int direction, int confusion_line, int threshold_);
 
 	UFUNCTION(BlueprintCallable, Category = "Custom", meta = (Keywords = "Confusion Line"))
-		void ColorInterp(FColor_lxy start, FColor_lxy end, int threshold, int steps, FLinearColor& plate_color);
+		void ColorInterp(FColor_lxy start, FColor_lxy end, int threshold_, int steps, FLinearColor& plate_color);
 
 	UFUNCTION(BlueprintCallable, Category = "Custom", meta = (Keywords = "Confusion Line"))
 		void ConfusionPoints(int confusion_line, FColor_lxy& start, FColor_lxy& end);
@@ -154,8 +163,11 @@ public:
 		void NeutralPoints(FColor_lxy& lxy);
 
 	UFUNCTION(BlueprintCallable, Category = "Custom", meta = (Keywords = "Confusion Line"))
-		void TrivectorTest(int start_thresh, TArray<AStaticMeshActor*> all_plates);
+		void TrivectorTestStimuli(int& confusion_line, int& direction);
 
 	UFUNCTION(BlueprintCallable, Category = "Custom", meta = (Keywords = "Confusion Line"))
-		void updateThreshold(int correct, int incorrect, int& threshold);
+		void TrivectorTestResponse(int response, int direction, int confusion_line, int& new_confusion_line, int& new_direction);
+
+	UFUNCTION(BlueprintCallable, Category = "Custom", meta = (Keywords = "Confusion Line"))
+		void updateThreshold(int correct, int incorrect, int& threshold_);
 };

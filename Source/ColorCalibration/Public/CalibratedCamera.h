@@ -50,7 +50,7 @@ public:
 		UMaterialInstanceDynamic* postprocess_material;
 
 	UFUNCTION(BlueprintCallable, Category = "Camera Settings", meta = (Keywords = "Start"))
-		void initialize_color_assist(FString primaries_filename, FString plates_filename, TArray<FTransform>& all_plates);
+		void initialize_color_assist(FString primaries_filename, FString plates_filename, int start_threshold, TArray<FTransform>& all_plates);
 
 	UFUNCTION(BlueprintCallable, Category = "Camera Settings", meta = (Keywords = "Start"))
 		void switch_camera_settings();
