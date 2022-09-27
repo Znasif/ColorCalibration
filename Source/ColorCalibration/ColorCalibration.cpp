@@ -308,7 +308,7 @@ void UColorCalibration::NeutralPoints(FColor_lxy& lxy) {
 void UColorCalibration::TrivectorTestStimuli(int& confusion_line, int& new_direction)
 {
 	confusion_line = 0;//CONFUSION_ALONG * FMath::FRand();
-	new_direction = 0;// 3 * FMath::FRand();
+	new_direction = 3 * FMath::FRand();
 	AlterPlateColors(new_direction, confusion_line, threshold[confusion_line]);
 }
 
@@ -359,6 +359,8 @@ void UColorCalibration::AlterPlateColors(int direction, int confusion_line, int 
 	int steps = 100;
 
 	NeutralPoints(neutral_points);
+
+	//neutral_color = FLinearColor(0.28395576, 0.21701843, 0.25577285);
 	for (int i = 0; i < all_plates.Num(); i++) {
 		UMaterialInstanceDynamic* back_plate_mat = UMaterialInstanceDynamic::Create(parent_mat, this);
 		//Update background
@@ -373,13 +375,14 @@ void UColorCalibration::AlterPlateColors(int direction, int confusion_line, int 
 
 	LoadDirectionPlates(direction, direction_plates_num);
 	ColorInterp(start, end, threshold_, steps, confusion_color);
+	//confusion_color = FLinearColor(0.4983248, 0.08473341, 0.173808);
 	int a = 0;
 	for (int i = 0; i < direction_plates_num.Num(); i++) {
 		int j = direction_plates_num[i];
 		if (j <= 211) j = j + 1;
 		UMaterialInstanceDynamic* front_plate_mat = UMaterialInstanceDynamic::Create(parent_mat, this);
 		//Update foreground color
-		//ColorInterp(start, end, threshold_, steps, confusion_color);
+		ColorInterp(start, end, threshold_, steps, confusion_color);
 		front_plate_mat->SetVectorParameterValue(FName("Color"), confusion_color);
 		all_plates[j]->GetStaticMeshComponent()->SetMaterial(0, front_plate_mat);
 	}
