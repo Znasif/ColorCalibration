@@ -152,7 +152,7 @@ void UColorCalibration::readPlatePointsFromCSV(FString csv_filename, int start_t
 	for (int i = 0; i < CONFUSION_ALONG; i++) {
 		threshold.Add(start_threshold);
 		correct_threshold.Add(start_threshold);
-		incorrect_threshold.Add(100);
+		incorrect_threshold.Add(0);
 		temp_thresh.Add(1);
 		start_thresh.Add(start_threshold);
 	}
@@ -307,7 +307,7 @@ void UColorCalibration::NeutralPoints(FColor_lxy& lxy) {
 
 void UColorCalibration::TrivectorTestStimuli(int& confusion_line, int& new_direction)
 {
-	confusion_line = CONFUSION_ALONG * FMath::FRand();
+	confusion_line = 0;//CONFUSION_ALONG * FMath::FRand();
 	new_direction = 0;// 3 * FMath::FRand();
 	AlterPlateColors(new_direction, confusion_line, threshold[confusion_line]);
 }
@@ -316,7 +316,8 @@ void UColorCalibration::TrivectorTestResponse(int response, int direction, int c
 {
 	if (test_done == false) {
 		bool correct = response == direction;
-		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, FString::Printf(TEXT("Response : %s"), correct ? "true" : "false"));
+		FString res_str = correct ? "true" : "false";
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, FString::Printf(TEXT("Response : %s"), *res_str));
 		if (correct) {
 			correct_threshold[confusion_line] = threshold[confusion_line];
 		}
@@ -353,10 +354,9 @@ void UColorCalibration::updateThreshold(int correct, int incorrect, int& thresho
 
 void UColorCalibration::AlterPlateColors(int direction, int confusion_line, int threshold_)
 {
-	UMaterialInterface* parent_mat = all_plates[0]->GetStaticMeshComponent()->GetMaterial(0);
 	FColor_lxy neutral_points;
-	FLinearColor neutral_color;
-	int steps = 10;
+	
+	int steps = 100;
 
 	NeutralPoints(neutral_points);
 	for (int i = 0; i < all_plates.Num(); i++) {
@@ -370,14 +370,16 @@ void UColorCalibration::AlterPlateColors(int direction, int confusion_line, int 
 	FColor_lxy start, end;
 	ConfusionPoints(confusion_line, start, end);
 	TArray<int> direction_plates_num;
-	FLinearColor confusion_color;
+
 	LoadDirectionPlates(direction, direction_plates_num);
+	ColorInterp(start, end, threshold_, steps, confusion_color);
+	int a = 0;
 	for (int i = 0; i < direction_plates_num.Num(); i++) {
 		int j = direction_plates_num[i];
 		if (j <= 211) j = j + 1;
 		UMaterialInstanceDynamic* front_plate_mat = UMaterialInstanceDynamic::Create(parent_mat, this);
 		//Update foreground color
-		ColorInterp(start, end, threshold_, steps, confusion_color);
+		//ColorInterp(start, end, threshold_, steps, confusion_color);
 		front_plate_mat->SetVectorParameterValue(FName("Color"), confusion_color);
 		all_plates[j]->GetStaticMeshComponent()->SetMaterial(0, front_plate_mat);
 	}

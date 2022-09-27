@@ -105,6 +105,15 @@ public:
 
 	TArray<AStaticMeshActor*> all_plates;
 
+	UPROPERTY(BlueprintReadWrite, Category = "Plate Color", meta = (Keywords = "Neutral"))
+	FLinearColor neutral_color;
+
+	UPROPERTY(BlueprintReadWrite, Category = "Plate Color", meta = (Keywords = "Confusion"))
+		FLinearColor confusion_color;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Plate Color", meta = (Keywords = "Confusion"))
+		UMaterial* parent_mat;
+
 	UFUNCTION(BlueprintCallable, Category = "Conversion", meta = (Keywords = "Eigen3"))
 	void solve(FColor_primaries_lxy recorded);
 
