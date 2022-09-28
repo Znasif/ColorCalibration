@@ -100,7 +100,9 @@ void UColorCalibration::convertFromRGBtoXYZ(FLinearColor RGB, FColor_XYZ& retCol
 void UColorCalibration::readPrimariesFromCSV(FString csv_filename, TArray<FColor_lxy>& lxys)
 {
 	TArray<FString> TextArray;
-	FString file_path = UKismetSystemLibrary::GetProjectSavedDirectory()+"/Inputs/"+csv_filename;
+	subject_responses.Empty();
+	subject_responses.Add("Time, Confusion Line, Threshold, Response");
+	FString file_path = FPaths::ConvertRelativePathToFull(FPaths::ProjectSavedDir()) + "/Inputs/" + csv_filename;
 	LoadTextFromFile(file_path, TextArray);
 	for (int i = 1; i < TextArray.Num(); i++)
 	{
@@ -224,6 +226,11 @@ bool UColorCalibration::LoadTextFromFile(FString FileName, TArray<FString>& Text
 	}
 }
 
+void UColorCalibration::recordResponsetoCSV(FString subjectID, int confusion_line, int threshold_being_tested, int response) {
+	FString save_path = FPaths::ConvertRelativePathToFull(FPaths::ProjectSavedDir()+"/Inputs/");
+	SaveArrayText(save_path, subjectID + ".csv", subject_responses, true);
+}
+
 bool UColorCalibration::SaveArrayText(FString SaveDirectory, FString FileName, TArray<FString> SaveText, bool AllowOverwriting = false)
 {
 	// Set complete file path
@@ -311,16 +318,17 @@ void UColorCalibration::NeutralPoints(FColor_Luv& Luv_neutral) {
 
 void UColorCalibration::TrivectorTestStimuli(int& confusion_line, int& new_direction)
 {
-	confusion_line = 0;//CONFUSION_ALONG * FMath::FRand();
+	confusion_line = CONFUSION_ALONG * FMath::FRand();
 	new_direction = 3 * FMath::FRand();
 	AlterPlateColors(new_direction, confusion_line, threshold[confusion_line]);
 }
 
 void UColorCalibration::TrivectorTestResponse(int response, int direction, int confusion_line, int& new_confusion_line, int& new_direction)
 {
+	FString res_str = "false";
 	if (all_test_done == false) {
 		bool correct = response == direction;
-		FString res_str = correct ? "true" : "false";
+		res_str = correct ? "true" : "false";
 		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, FString::Printf(TEXT("Response : %s"), *res_str));
 		if (correct) {
 			correct_threshold[confusion_line] = threshold[confusion_line];
@@ -345,6 +353,9 @@ void UColorCalibration::TrivectorTestResponse(int response, int direction, int c
 	if (test_done[confusion_line] == false) {
 		TrivectorTestStimuli(new_confusion_line, new_direction);
 		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::White, FString::Printf(TEXT("threshold : %d"), threshold[confusion_line]));
+		
+		FString rs_string = FString::SanitizeFloat(current_time)+","+FString::FromInt(confusion_line)+","+FString::FromInt(threshold[confusion_line])+res_str;
+		subject_responses.Add(rs_string);
 	}
 	else {
 		bool all_test = true;

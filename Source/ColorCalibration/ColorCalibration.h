@@ -97,6 +97,7 @@ class COLORCALIBRATION_API UColorCalibration : public UObject
 	TArray<int> temp_thresh;
 	TArray<int> start_thresh;
 	float lines_of_confusion[CONFUSION_ALONG];
+	TArray<FString> subject_responses;
 public:
 	Eigen::Matrix <double, 3, 3> XYZ_to_RGB;
 	Eigen::Matrix <double, 3, 3> RGB_to_XYZ;
@@ -106,6 +107,9 @@ public:
 	bool all_test_done;
 
 	TArray<AStaticMeshActor*> all_plates;
+
+	UPROPERTY(BlueprintReadWrite, Category = "Custom", meta = (Keywords = "Subject Data"))
+		float current_time;
 
 	UPROPERTY(BlueprintReadWrite, Category = "Plate Color", meta = (Keywords = "Neutral"))
 	FLinearColor neutral_color;
@@ -181,4 +185,7 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Custom", meta = (Keywords = "Confusion Line"))
 		void vectorCCT(float azimuth, FColor_Luv neutral_luv, FColor_Luv& start, FColor_Luv& end);
+
+	UFUNCTION(BlueprintCallable, Category = "Custom", meta = (Keywords = "Subject Data"))
+		void recordResponsetoCSV(FString subjectID, int confusion_line, int threshold_being_tested, int response);
 };
