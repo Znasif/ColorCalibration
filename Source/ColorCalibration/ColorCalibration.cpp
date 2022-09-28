@@ -5,7 +5,6 @@
 
 IMPLEMENT_PRIMARY_GAME_MODULE( FDefaultGameModuleImpl, ColorCalibration, "ColorCalibration" );
 
-
 void UColorCalibration::convertFromlxytoRGB(FColor_lxy lxy, FLinearColor& retColor)
 {
 	FColor_XYZ temp;
@@ -43,9 +42,9 @@ void UColorCalibration::convertFromLuvtolxy(FColor_Luv Luv, FColor_lxy& retColor
 
 void UColorCalibration::convertFromLuvtoRGB(FColor_Luv Luv, FLinearColor& retColor)
 {
-	FColor_lxy lxy;
-	convertFromLuvtolxy(Luv, lxy);
-	convertFromlxytoRGB(lxy, retColor);
+	FColor_XYZ XYZ;
+	convertFromLuvToXYZ(Luv, XYZ);
+	convertFromXYZtoRGB(XYZ, retColor);
 }
 
 void UColorCalibration::convertFromLuvToXYZ(FColor_Luv Luv, FColor_XYZ& retColor)
@@ -155,6 +154,19 @@ void UColorCalibration::readPlatePointsFromCSV(FString csv_filename, int start_t
 		incorrect_threshold.Add(0);
 		temp_thresh.Add(1);
 		start_thresh.Add(start_threshold);
+		test_done[i] = false;
+	}
+
+	if (CONFUSION_ALONG == 3) {
+		lines_of_confusion[0] = 0.07; //protan
+		lines_of_confusion[1] = 5.98; //deuteran
+		lines_of_confusion[2] = 4.83; //tritan
+	}
+	else {
+		for (int i = 0; i < CONFUSION_ALONG; i++)
+		{
+			lines_of_confusion[i] = i * 2 * PI / CONFUSION_ALONG;
+		}
 	}
 	
 	FString file_path = UKismetSystemLibrary::GetProjectSavedDirectory() + "/Inputs/" + csv_filename;
@@ -293,16 +305,8 @@ void UColorCalibration::LoadAllPlatesMeshActor(TArray<AStaticMeshActor*> all_pla
 	all_plates = all_plates_actors;
 }
 
-void UColorCalibration::ConfusionPoints(int confusion_line, FColor_lxy& start, FColor_lxy& end) {
-	FColor_Luv Luv_starts[] = {FColor_Luv(0.217169819, 0.468878767), FColor_Luv(0.217030009, 0.458258869), FColor_Luv(0.200289048, 0.447181003)};
-	FColor_Luv Luv_ends[] = { FColor_Luv(0.308435721, 0.474292894), FColor_Luv(0.299623829, 0.431180807), FColor_Luv(0.209764962, 0.356921098)};
-	convertFromLuvtolxy(Luv_starts[confusion_line], start);
-	convertFromLuvtolxy(Luv_ends[confusion_line], end);
-}
-
-void UColorCalibration::NeutralPoints(FColor_lxy& lxy) {
-	FColor_Luv Luv_neutrals = FColor_Luv(0.1977, 0.4689);
-	convertFromLuvtolxy(Luv_neutrals, lxy);
+void UColorCalibration::NeutralPoints(FColor_Luv& Luv_neutral) {
+	Luv_neutral = FColor_Luv(0.1977, 0.4689);
 }
 
 void UColorCalibration::TrivectorTestStimuli(int& confusion_line, int& new_direction)
@@ -314,7 +318,7 @@ void UColorCalibration::TrivectorTestStimuli(int& confusion_line, int& new_direc
 
 void UColorCalibration::TrivectorTestResponse(int response, int direction, int confusion_line, int& new_confusion_line, int& new_direction)
 {
-	if (test_done == false) {
+	if (all_test_done == false) {
 		bool correct = response == direction;
 		FString res_str = correct ? "true" : "false";
 		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, FString::Printf(TEXT("Response : %s"), *res_str));
@@ -328,22 +332,27 @@ void UColorCalibration::TrivectorTestResponse(int response, int direction, int c
 		updateThreshold(correct_threshold[confusion_line], incorrect_threshold[confusion_line], threshold_);
 		temp_thresh[confusion_line] = threshold_;
 		if (threshold[confusion_line] == temp_thresh[confusion_line]) {
-			test_done = true;
+			test_done[confusion_line] = true;
 		}
 		else {
 			threshold[confusion_line] = temp_thresh[confusion_line];
 		}
 		if (!correct && threshold[confusion_line] == start_thresh[confusion_line]) {
-			test_done = true;
+			test_done[confusion_line] = true;
 		}
-		if (correct && threshold[confusion_line] == 1) test_done = true;
+		if (correct && threshold[confusion_line] == 1) test_done[confusion_line] = true;
 	}
-	if (test_done == false) {
+	if (test_done[confusion_line] == false) {
 		TrivectorTestStimuli(new_confusion_line, new_direction);
 		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::White, FString::Printf(TEXT("threshold : %d"), threshold[confusion_line]));
 	}
 	else {
+		bool all_test = true;
+		for (int i = 0; i < CONFUSION_ALONG; i++) {
+			all_test &= test_done[i];
+		}
 		new_direction = 4;
+		all_test_done = all_test;
 	}
 }
 
@@ -352,15 +361,27 @@ void UColorCalibration::updateThreshold(int correct, int incorrect, int& thresho
 	threshold_ = (correct + incorrect) / 2;
 }
 
+void UColorCalibration::vectorCCT(float azimuth, FColor_Luv neutral_luv, FColor_Luv& start, FColor_Luv& end)
+{
+	float center[] = { neutral_luv.u, neutral_luv .v};
+	float r[] = { 0.002f, 0.110f };
+	start.L = 1;
+	start.u = center[0] + r[0] * FMath::Cos(azimuth);
+	start.v = center[1] + r[0] * FMath::Cos(azimuth);
+	end.L = 1;
+	end.u = center[0] + r[1] * FMath::Cos(azimuth);
+	end.v = center[1] + r[1] * FMath::Cos(azimuth);
+}
+
 void UColorCalibration::AlterPlateColors(int direction, int confusion_line, int threshold_)
 {
-	FColor_lxy neutral_points;
+	FColor_Luv neutral_points;
 	
 	int steps = 100;
 
 	NeutralPoints(neutral_points);
 
-	//neutral_color = FLinearColor(0.28395576, 0.21701843, 0.25577285);
+	ColorInterp(neutral_points, neutral_points, 1, steps, neutral_color); //neutral_color = FLinearColor(0.28395576, 0.21701843, 0.25577285);
 	for (int i = 0; i < all_plates.Num(); i++) {
 		UMaterialInstanceDynamic* back_plate_mat = UMaterialInstanceDynamic::Create(parent_mat, this);
 		//Update background
@@ -369,14 +390,13 @@ void UColorCalibration::AlterPlateColors(int direction, int confusion_line, int 
 		all_plates[i]->GetStaticMeshComponent()->SetMaterial(0, back_plate_mat);
 	}
 	
-	FColor_lxy start, end;
-	ConfusionPoints(confusion_line, start, end);
+	FColor_Luv start, end;
+	
+	vectorCCT(lines_of_confusion[confusion_line], neutral_points, start, end);
 	TArray<int> direction_plates_num;
 
 	LoadDirectionPlates(direction, direction_plates_num);
 	ColorInterp(start, end, threshold_, steps, confusion_color);
-	//confusion_color = FLinearColor(0.4983248, 0.08473341, 0.173808);
-	int a = 0;
 	for (int i = 0; i < direction_plates_num.Num(); i++) {
 		int j = direction_plates_num[i];
 		if (j <= 211) j = j + 1;
@@ -389,15 +409,13 @@ void UColorCalibration::AlterPlateColors(int direction, int confusion_line, int 
 	//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::White, FString::Printf(TEXT("Float : %f %f %f"), confusion_color.R, confusion_color.G, confusion_color.B));
 }
 
-void UColorCalibration::ColorInterp(FColor_lxy start, FColor_lxy end, int threshold_, int steps, FLinearColor& plate_color)
+void UColorCalibration::ColorInterp(FColor_Luv start, FColor_Luv end, int threshold_, int steps, FLinearColor& plate_color)
 {
-	FColor_lxy threshold_color;
-	threshold_color.x = start.x + (threshold_ * (end.x - start.x) / steps);
-	threshold_color.y = start.y + (threshold_ * (end.y - start.y) / steps);
-	threshold_color.l = (FMath::FRand() * 17.0f + 7.6f);
-	FColor_XYZ XYZ;
-	convertFromlxyToXYZ(threshold_color, XYZ);
-	convertFromXYZtoRGB(XYZ, plate_color);
+	FColor_Luv threshold_color;
+	threshold_color.u = start.u + (threshold_ * (end.u - start.u) / steps);
+	threshold_color.v = start.v + (threshold_ * (end.v - start.v) / steps);
+	threshold_color.L = (FMath::FRand() * 16.0f + 6.0f);
+	convertFromLuvtoRGB(threshold_color, plate_color);
 }
 
 void UColorCalibration::solve(FColor_primaries_lxy recorded) {

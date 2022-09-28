@@ -96,12 +96,14 @@ class COLORCALIBRATION_API UColorCalibration : public UObject
 	TArray<int> incorrect_threshold;
 	TArray<int> temp_thresh;
 	TArray<int> start_thresh;
+	float lines_of_confusion[CONFUSION_ALONG];
 public:
 	Eigen::Matrix <double, 3, 3> XYZ_to_RGB;
 	Eigen::Matrix <double, 3, 3> RGB_to_XYZ;
 	float max_lum = 100.0f;
 
-	bool test_done = false;
+	bool test_done[CONFUSION_ALONG];
+	bool all_test_done;
 
 	TArray<AStaticMeshActor*> all_plates;
 
@@ -163,13 +165,10 @@ public:
 		void AlterPlateColors(int direction, int confusion_line, int threshold_);
 
 	UFUNCTION(BlueprintCallable, Category = "Custom", meta = (Keywords = "Confusion Line"))
-		void ColorInterp(FColor_lxy start, FColor_lxy end, int threshold_, int steps, FLinearColor& plate_color);
-
-	UFUNCTION(BlueprintCallable, Category = "Custom", meta = (Keywords = "Confusion Line"))
-		void ConfusionPoints(int confusion_line, FColor_lxy& start, FColor_lxy& end);
+		void ColorInterp(FColor_Luv start, FColor_Luv end, int threshold_, int steps, FLinearColor& plate_color);
 	
 	UFUNCTION(BlueprintCallable, Category = "Custom", meta = (Keywords = "Confusion Line"))
-		void NeutralPoints(FColor_lxy& lxy);
+		void NeutralPoints(FColor_Luv& Luv_neutral);
 
 	UFUNCTION(BlueprintCallable, Category = "Custom", meta = (Keywords = "Confusion Line"))
 		void TrivectorTestStimuli(int& confusion_line, int& direction);
@@ -179,4 +178,7 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Custom", meta = (Keywords = "Confusion Line"))
 		void updateThreshold(int correct, int incorrect, int& threshold_);
+
+	UFUNCTION(BlueprintCallable, Category = "Custom", meta = (Keywords = "Confusion Line"))
+		void vectorCCT(float azimuth, FColor_Luv neutral_luv, FColor_Luv& start, FColor_Luv& end);
 };
