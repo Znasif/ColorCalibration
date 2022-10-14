@@ -104,9 +104,10 @@ public:
 	float max_lum = 100.0f;
 
 	bool test_done[CONFUSION_ALONG];
-	bool all_test_done;
-
 	TArray<AStaticMeshActor*> all_plates;
+
+	UPROPERTY(BlueprintReadWrite, Category = "Custom", meta = (Keywords = "Subject Data"))
+		bool all_test_done;
 
 	UPROPERTY(BlueprintReadWrite, Category = "Custom", meta = (Keywords = "Subject Data"))
 		float current_time;
@@ -187,5 +188,5 @@ public:
 		void vectorCCT(float azimuth, FColor_Luv neutral_luv, FColor_Luv& start, FColor_Luv& end);
 
 	UFUNCTION(BlueprintCallable, Category = "Custom", meta = (Keywords = "Subject Data"))
-		void recordResponsetoCSV(FString subjectID, int confusion_line, int threshold_being_tested, int response);
+		void recordResponsetoCSV(FString subjectID);
 };
