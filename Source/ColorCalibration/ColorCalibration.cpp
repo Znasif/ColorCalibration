@@ -328,10 +328,10 @@ void UColorCalibration::TrivectorTestStimuli(int& confusion_line, int& new_direc
 				}
 			}
 		}
-		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::White, FString::Printf(TEXT("threshold : %d"), confusion_line));
+		//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::White, FString::Printf(TEXT("threshold : %d"), confusion_line));
 	}
 	else {
-		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::White, FString::Printf(TEXT("Test done!")));
+		//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::White, FString::Printf(TEXT("Test done!")));
 		return;
 	}
 	new_direction = 3 * FMath::FRand();
@@ -394,10 +394,10 @@ void UColorCalibration::vectorCCT(float azimuth, FColor_Luv neutral_luv, FColor_
 	float r[] = { 0.002f, 0.110f };
 	start.L = 1;
 	start.u = center[0] + r[0] * FMath::Cos(azimuth);
-	start.v = center[1] + r[0] * FMath::Cos(azimuth);
+	start.v = center[1] + r[0] * FMath::Sin(azimuth);
 	end.L = 1;
 	end.u = center[0] + r[1] * FMath::Cos(azimuth);
-	end.v = center[1] + r[1] * FMath::Cos(azimuth);
+	end.v = center[1] + r[1] * FMath::Sin(azimuth);
 }
 
 void UColorCalibration::AlterPlateColors(int direction, int confusion_line, int threshold_)
