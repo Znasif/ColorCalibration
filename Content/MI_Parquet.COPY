@@ -1,0 +1,32 @@
+Begin Object Class=/Script/Engine.MaterialInstanceConstant Name="MI_Parquet"
+   Begin Object Class=/Script/UnrealEd.SceneThumbnailInfoWithPrimitive Name="SceneThumbnailInfoWithPrimitive_0"
+   End Object
+   Begin Object Name="SceneThumbnailInfoWithPrimitive_0"
+   End Object
+   ParameterStateId=F43D4A4542A3DDFD15E7F49C57958544
+   Parent=Material'"/Game/BigCompanyArchViz/Materials/M_General.M_General"'
+   ScalarParameterValues(0)=(ParameterInfo=(Name="AO"),ParameterValue=1.000000,ExpressionGUID=907C8E3145DF2684121850A29FA95CBF)
+   ScalarParameterValues(1)=(ParameterInfo=(Name="Roughness"),ParameterValue=2.000000,ExpressionGUID=A6943F694D5D8BF9CBB47F98C95A861B)
+   ScalarParameterValues(2)=(ParameterInfo=(Name="Scale"),ParameterValue=16.000000,ExpressionGUID=C6F92B2045F71001D07331AEA04ACBB8)
+   ScalarParameterValues(3)=(ParameterInfo=(Name="RefractionDepthBias"))
+   TextureParameterValues(0)=(ParameterInfo=(Name="AO"),ParameterValue=Texture2D'"/Game/BigCompanyArchViz/Textures/T_WoodFloor_Disp.T_WoodFloor_Disp"',ExpressionGUID=6433CD1041732BB387A69D8162B86310)
+   TextureParameterValues(1)=(ParameterInfo=(Name="BaseColor"),ParameterValue=Texture2D'"/Game/BigCompanyArchViz/Textures/T_WoodFloor_BaseColor.T_WoodFloor_BaseColor"',ExpressionGUID=5975CB4F426D5E9B1BA0B1A4FB63FECE)
+   TextureParameterValues(2)=(ParameterInfo=(Name="Normal"),ParameterValue=Texture2D'"/Game/BigCompanyArchViz/Textures/T_WoodFloor_Normal.T_WoodFloor_Normal"',ExpressionGUID=58EE2F834C345C89999ECAB75386B6FE)
+   TextureParameterValues(3)=(ParameterInfo=(Name="Roughness"),ParameterValue=Texture2D'"/Game/BigCompanyArchViz/Textures/T_WoodFloor_Rough.T_WoodFloor_Rough"',ExpressionGUID=E74229224B0DE6FC4E09869087626735)
+   BasePropertyOverrides=(OpacityMaskClipValue=0.333300)
+   ReferencedTextureGuids(0)=5F781049465F14C02EB87292CDEB72C5
+   ReferencedTextureGuids(1)=E31C46294B1FE422E2F29E98F6E2F7F4
+   ReferencedTextureGuids(2)=B7C276C04CD84AC91B708D8DC5E0D120
+   ReferencedTextureGuids(3)=45BCCF64484FB14E4E53E498D070DA0C
+   CachedReferencedTextures(0)=Texture2D'"/Game/BigCompanyArchViz/Textures/T_OutDoorUnitB_BaseColor.T_OutDoorUnitB_BaseColor"'
+   CachedReferencedTextures(1)=Texture2D'"/Game/BigCompanyArchViz/Textures/T_OutDoorUnitB_Normal.T_OutDoorUnitB_Normal"'
+   CachedReferencedTextures(2)=Texture2D'"/Game/BigCompanyArchViz/Textures/T_OutDoorUnitB_AO.T_OutDoorUnitB_AO"'
+   CachedReferencedTextures(3)=Texture2D'"/Game/BigCompanyArchViz/Textures/T_OutDoorUnitB_Roughness.T_OutDoorUnitB_Roughness"'
+   TextureStreamingDataVersion=1
+   TextureStreamingData(0)=(SamplingScale=16.000000,UVChannelIndex=0,TextureName="T_WoodFloor_BaseColor",TextureReference=/Game/BigCompanyArchViz/Textures/T_WoodFloor_BaseColor.T_WoodFloor_BaseColor)
+   TextureStreamingData(1)=(SamplingScale=16.000000,UVChannelIndex=0,TextureName="T_WoodFloor_Disp",TextureReference=/Game/BigCompanyArchViz/Textures/T_WoodFloor_Disp.T_WoodFloor_Disp)
+   TextureStreamingData(2)=(SamplingScale=16.000000,UVChannelIndex=0,TextureName="T_WoodFloor_Normal",TextureReference=/Game/BigCompanyArchViz/Textures/T_WoodFloor_Normal.T_WoodFloor_Normal)
+   TextureStreamingData(3)=(SamplingScale=16.000000,UVChannelIndex=0,TextureName="T_WoodFloor_Rough",TextureReference=/Game/BigCompanyArchViz/Textures/T_WoodFloor_Rough.T_WoodFloor_Rough)
+   ThumbnailInfo=SceneThumbnailInfoWithPrimitive'"SceneThumbnailInfoWithPrimitive_0"'
+   LightingGuid=5544A1F74F36E3993FD5AEA092A75CF5
+End Object
