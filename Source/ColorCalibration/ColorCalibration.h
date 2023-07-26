@@ -91,11 +91,10 @@ UCLASS(BlueprintType)
 class COLORCALIBRATION_API UColorCalibration : public UObject
 {
 	GENERATED_BODY()
-	TArray<int> threshold;
-	TArray<int> correct_threshold;
-	TArray<int> incorrect_threshold;
-	TArray<int> temp_thresh;
-	TArray<int> start_thresh;
+	TArray<float> threshold;
+	TArray<float> dir_stair;
+	TArray<float> step_size;
+	TArray<int> reversal_counter;
 	float lines_of_confusion[CONFUSION_ALONG];
 	TArray<FString> subject_responses;
 public:
@@ -152,7 +151,7 @@ public:
 		void readPrimariesFromCSV(FString csv_filename, TArray<FColor_lxy>& lxys);
 
 	UFUNCTION(BlueprintCallable, Category = "Conversion", meta = (Keywords = "Plates"))
-		void readPlatePointsFromCSV(FString csv_filename, int start_threshold, TArray<FTransform>& all_plates);
+		void readPlatePointsFromCSV(FString csv_filename, float start_threshold, float start_step_size, TArray<FTransform>& all_plates);
 
 	UFUNCTION(BlueprintCallable, Category = "Custom", meta = (Keywords = "Load"))
 		static bool LoadTextFromFile(FString FileName, TArray<FString>& TextArray);
@@ -167,10 +166,10 @@ public:
 		void LoadAllPlatesMeshActor(TArray<AStaticMeshActor*> all_plates_actors);
 
 	UFUNCTION(BlueprintCallable, Category = "Custom", meta = (Keywords = "Plates"))
-		void AlterPlateColors(int direction, int confusion_line, int threshold_);
+		void AlterPlateColors(int direction, int confusion_line, float threshold_);
 
 	UFUNCTION(BlueprintCallable, Category = "Custom", meta = (Keywords = "Confusion Line"))
-		void ColorInterp(FColor_Luv start, FColor_Luv end, int threshold_, int steps, FLinearColor& plate_color);
+		void ColorInterp(FColor_Luv start, FColor_Luv end, float threshold_, int steps, FLinearColor& plate_color);
 	
 	UFUNCTION(BlueprintCallable, Category = "Custom", meta = (Keywords = "Confusion Line"))
 		void NeutralPoints(FColor_Luv& Luv_neutral);

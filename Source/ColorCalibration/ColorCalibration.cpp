@@ -140,22 +140,20 @@ void UColorCalibration::readPrimariesFromCSV(FString csv_filename, TArray<FColor
 	solve(primaries);
 }
 
-void UColorCalibration::readPlatePointsFromCSV(FString csv_filename, int start_threshold, TArray<FTransform>& all_plates_transform)
+void UColorCalibration::readPlatePointsFromCSV(FString csv_filename, float start_threshold, float start_step_size, TArray<FTransform>& all_plates_transform)
 {
 	TArray<FString> TextArray;
 	
 	threshold.Empty();
-	correct_threshold.Empty();
-	incorrect_threshold.Empty();
-	temp_thresh.Empty();
-	start_thresh.Empty();
+	dir_stair.Empty();
+	step_size.Empty();
+	reversal_counter.Empty();
 
 	for (int i = 0; i < CONFUSION_ALONG; i++) {
 		threshold.Add(start_threshold);
-		correct_threshold.Add(start_threshold);
-		incorrect_threshold.Add(0);
-		temp_thresh.Add(1);
-		start_thresh.Add(start_threshold);
+		step_size.Add(start_step_size);
+		dir_stair.Add(1.0);
+		reversal_counter.Add(0);
 		test_done[i] = false;
 	}
 
@@ -343,28 +341,35 @@ void UColorCalibration::TrivectorTestResponse(int response, int direction, int c
 	FString res_str = "false";
 	bool correct = response == direction;
 	res_str = correct ? "true" : "false";
-	FString rs_string = FString::SanitizeFloat(current_time) + "," + FString::FromInt(confusion_line) + "," + FString::FromInt(direction) + "," + FString::FromInt(response) + "," + FString::FromInt(threshold[confusion_line]) + "," + res_str;
+	FString rs_string = FString::SanitizeFloat(current_time) + "," + FString::FromInt(confusion_line) + "," + FString::FromInt(direction) + "," + FString::FromInt(response) + "," + FString::SanitizeFloat(threshold[confusion_line]) + "," + res_str;
 	if (all_test_done == false) {
 		//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, FString::Printf(TEXT("Response : %s"), *res_str));
-		if (correct) {
-			correct_threshold[confusion_line] = threshold[confusion_line];
+		if (correct && dir_stair[confusion_line]==1.0) {
+			//correct_threshold[confusion_line] = threshold[confusion_line];
+			dir_stair[confusion_line] = -1;
+			step_size[confusion_line] = step_size[confusion_line] * 2;
+			reversal_counter[confusion_line] += 1;
+		}
+		else if (!correct && dir_stair[confusion_line] == -1.0) {
+			//correct_threshold[confusion_line] = threshold[confusion_line];
+			dir_stair[confusion_line] = 1;
+			step_size[confusion_line] = step_size[confusion_line] * 2;
+			reversal_counter[confusion_line] += 1;
 		}
 		else {
-			incorrect_threshold[confusion_line] = threshold[confusion_line];
+			//incorrect_threshold[confusion_line] = threshold[confusion_line];
+			step_size[confusion_line] = step_size[confusion_line] / 2;
 		}
-		int threshold_ = 0;
-		updateThreshold(correct_threshold[confusion_line], incorrect_threshold[confusion_line], threshold_);
-		temp_thresh[confusion_line] = threshold_;
-		if (threshold[confusion_line] == temp_thresh[confusion_line]) {
-			test_done[confusion_line] = true;
+		//updateThreshold(correct_threshold[confusion_line], incorrect_threshold[confusion_line], threshold_);
+		float temp_threshold = threshold[confusion_line] + step_size[confusion_line] * dir_stair[confusion_line];
+		if (temp_threshold >= 0.02) {
+			threshold[confusion_line] = temp_threshold;
+			if(reversal_counter[confusion_line]>=6) test_done[confusion_line] = true;
 		}
 		else {
-			threshold[confusion_line] = temp_thresh[confusion_line];
-		}
-		if (!correct && threshold[confusion_line] == start_thresh[confusion_line]) {
+			threshold[confusion_line] = 0.02;
 			test_done[confusion_line] = true;
 		}
-		if (correct && threshold[confusion_line] <= 1) test_done[confusion_line] = true;
 		subject_responses.Add(rs_string);
 	}
 	else {
@@ -400,11 +405,11 @@ void UColorCalibration::vectorCCT(float azimuth, FColor_Luv neutral_luv, FColor_
 	end.v = center[1] + r[1] * FMath::Sin(azimuth);
 }
 
-void UColorCalibration::AlterPlateColors(int direction, int confusion_line, int threshold_)
+void UColorCalibration::AlterPlateColors(int direction, int confusion_line, float threshold_)
 {
 	FColor_Luv neutral_points;
 	
-	int steps = 100;
+	int steps = 1;
 
 	NeutralPoints(neutral_points);
 
@@ -436,7 +441,7 @@ void UColorCalibration::AlterPlateColors(int direction, int confusion_line, int 
 	//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::White, FString::Printf(TEXT("Float : %f %f %f"), confusion_color.R, confusion_color.G, confusion_color.B));
 }
 
-void UColorCalibration::ColorInterp(FColor_Luv start, FColor_Luv end, int threshold_, int steps, FLinearColor& plate_color)
+void UColorCalibration::ColorInterp(FColor_Luv start, FColor_Luv end, float threshold_, int steps, FLinearColor& plate_color)
 {
 	FColor_Luv threshold_color;
 	threshold_color.u = start.u + (threshold_ * (end.u - start.u) / steps);
