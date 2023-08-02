@@ -3,7 +3,7 @@
 #pragma once
 
 
-#define CONFUSION_ALONG 3
+#define CONFUSION_ALONG 1
 
 #include "CoreMinimal.h"
 #include "Kismet/BlueprintFunctionLibrary.h"

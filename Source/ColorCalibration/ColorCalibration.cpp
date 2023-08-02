@@ -157,10 +157,10 @@ void UColorCalibration::readPlatePointsFromCSV(FString csv_filename, float start
 		test_done[i] = false;
 	}
 
-	if (CONFUSION_ALONG == 3) {
+	if (CONFUSION_ALONG == 1) {
 		lines_of_confusion[0] = 0.07; //protan
-		lines_of_confusion[1] = 5.98; //deuteran
-		lines_of_confusion[2] = 4.83; //tritan
+		//lines_of_confusion[1] = 5.98; //deuteran
+		//lines_of_confusion[2] = 4.83; //tritan
 	}
 	else {
 		for (int i = 0; i < CONFUSION_ALONG; i++)
