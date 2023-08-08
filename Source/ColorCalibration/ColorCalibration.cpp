@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "ColorCalibration.h"
+#include "Math/RandomStream.h"
 #include "Modules/ModuleManager.h"
 
 IMPLEMENT_PRIMARY_GAME_MODULE( FDefaultGameModuleImpl, ColorCalibration, "ColorCalibration" );
@@ -101,7 +102,8 @@ void UColorCalibration::readPrimariesFromCSV(FString csv_filename, TArray<FColor
 {
 	TArray<FString> TextArray;
 	subject_responses.Empty();
-	subject_responses.Add("Time, Confusion Line, Direction, Response, Threshold, Correct");
+	//subject_responses.Add("Time, Confusion Line, Direction, Response, Threshold, Correct");
+	subject_responses.Add("Patient Input,Patient Response,v_prime_w,orientation,u_prime_w,saturation,Number of Reversals,Index Trial,Threshold,Decreasing Parameter Rate,ConditionName,az");
 	FString file_path = FPaths::ConvertRelativePathToFull(FPaths::ProjectSavedDir()) + "/Inputs/" + csv_filename;
 	LoadTextFromFile(file_path, TextArray);
 	for (int i = 1; i < TextArray.Num(); i++)
@@ -140,27 +142,31 @@ void UColorCalibration::readPrimariesFromCSV(FString csv_filename, TArray<FColor
 	solve(primaries);
 }
 
-void UColorCalibration::readPlatePointsFromCSV(FString csv_filename, float start_threshold, float start_step_size, TArray<FTransform>& all_plates_transform)
+void UColorCalibration::readPlatePointsFromCSV(FString csv_filename, float start_threshold, int start_step_size, TArray<FTransform>& all_plates_transform)
 {
 	TArray<FString> TextArray;
 	
 	threshold.Empty();
 	dir_stair.Empty();
 	step_size.Empty();
+	index.Empty();
+	track_peak.Empty();
 	reversal_counter.Empty();
-
+	starting_threshold = start_threshold;
 	for (int i = 0; i < CONFUSION_ALONG; i++) {
 		threshold.Add(start_threshold);
 		step_size.Add(start_step_size);
-		dir_stair.Add(1.0);
+		dir_stair.Add(false);
 		reversal_counter.Add(0);
 		test_done[i] = false;
+		index.Add(1);
+		track_peak.Add(0);
 	}
 
-	if (CONFUSION_ALONG == 1) {
+	if (CONFUSION_ALONG == 3) {
 		lines_of_confusion[0] = 0.07; //protan
-		//lines_of_confusion[1] = 5.98; //deuteran
-		//lines_of_confusion[2] = 4.83; //tritan
+		lines_of_confusion[1] = 5.98; //deuteran
+		lines_of_confusion[2] = 4.83; //tritan
 	}
 	else {
 		for (int i = 0; i < CONFUSION_ALONG; i++)
@@ -200,7 +206,7 @@ void UColorCalibration::readPlatePointsFromCSV(FString csv_filename, float start
 
 		FTransform trsform_now;
 		trsform_now.SetLocation(FVector(trsform[0], trsform[1], trsform[2]));
-		trsform[3] = FMath::Sqrt(trsform[3]) / 100.0;
+		trsform[3] = FMath::Sqrt(trsform[3]);
 		trsform_now.SetScale3D(FVector(0.0, trsform[3], trsform[3]));
 
 		all_plates_transform.Add(trsform_now);
@@ -332,19 +338,92 @@ void UColorCalibration::TrivectorTestStimuli(int& confusion_line, int& new_direc
 		//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::White, FString::Printf(TEXT("Test done!")));
 		return;
 	}
-	new_direction = 3 * FMath::FRand();
+	FRandomStream RandomStream(FMath::Rand());
+	new_direction = RandomStream.RandRange(0, 3);
 	AlterPlateColors(new_direction, confusion_line, threshold[confusion_line]);
 }
 
 void UColorCalibration::TrivectorTestResponse(int response, int direction, int confusion_line, int& new_confusion_line, int& new_direction)
 {
-	FString res_str = "false";
+	FString full_str = "";
 	bool correct = response == direction;
-	res_str = correct ? "true" : "false";
-	FString rs_string = FString::SanitizeFloat(current_time) + "," + FString::FromInt(confusion_line) + "," + FString::FromInt(direction) + "," + FString::FromInt(response) + "," + FString::SanitizeFloat(threshold[confusion_line]) + "," + res_str;
+	//res_str = correct ? "true" : "false";
+	//FString rs_string = FString::SanitizeFloat(current_time) + "," + FString::FromInt(confusion_line) + "," + FString::FromInt(direction) + "," + FString::FromInt(response) + "," + FString::SanitizeFloat(threshold[confusion_line]) + "," + res_str;
+	FString rs_string = "";
+	switch (response)
+	{
+	case 0:
+		rs_string = "Top Button";
+		break;
+	case 1:
+		rs_string = "Left Button";
+		break;
+	case 2:
+		rs_string = "Bottom Button";
+		break;
+	case 3:
+		rs_string = "Right Button";
+		break;
+	}
+	full_str += rs_string+",";
+	if (response == direction)
+	{
+		rs_string = "Hit";
+	}
+	else{
+		rs_string = "Miss";
+	}
+	full_str += rs_string+",";
+	FColor_Luv Luv_neutral;
+	NeutralPoints(Luv_neutral);
+	full_str += FString::SanitizeFloat(Luv_neutral.v)+",";
+	switch (direction)
+	{
+	case 0:
+		rs_string = "90";
+		break;
+	case 1:
+		rs_string = "180";
+		break;
+	case 2:
+		rs_string = "270";
+		break;
+	case 3:
+		rs_string = "0";
+		break;
+	}
+	float temp_threshold = 0.0;
+	full_str += rs_string + "," + FString::SanitizeFloat(Luv_neutral.u) + ",";
+	//"Patient Input, Patient Response, v_prime_w, orientation, u_prime_w, saturation, Number of Reversals, Index Trial, Threshold, Decreasing Parameter Rate, ConditionName, az";
+	full_str += FString::SanitizeFloat(threshold[confusion_line])+",";
 	if (all_test_done == false) {
+		if (track_peak[confusion_line] == 5) {
+			temp_threshold = 0.110;
+			test_done[confusion_line] = true;
+		}
 		//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, FString::Printf(TEXT("Response : %s"), *res_str));
-		if (correct && dir_stair[confusion_line]==1.0) {
+		else if (!correct && threshold[confusion_line] == starting_threshold) {
+			track_peak[confusion_line] += 1;
+			temp_threshold = 0.110;
+		}
+		else if (correct) {
+			dir_stair[confusion_line] = true;
+			temp_threshold = threshold[confusion_line] * (1 - step_size[confusion_line] / 100.0);
+		}
+		else if (!correct && dir_stair[confusion_line]) {
+			dir_stair[confusion_line] = false;
+			step_size[confusion_line] = 24;
+			temp_threshold = threshold[confusion_line] * (1 + step_size[confusion_line] / 100.0);
+			step_size[confusion_line] = 8;
+			reversal_counter[confusion_line] += 1;
+		}
+		else {
+			dir_stair[confusion_line] = false;
+			step_size[confusion_line] = 24;
+			temp_threshold = threshold[confusion_line] * (1 + step_size[confusion_line] / 100.0);
+			step_size[confusion_line] = 8;
+		}
+		/*if (correct && dir_stair[confusion_line] == 1.0) {
 			//correct_threshold[confusion_line] = threshold[confusion_line];
 			dir_stair[confusion_line] = -1;
 			step_size[confusion_line] = step_size[confusion_line] * 2;
@@ -359,18 +438,25 @@ void UColorCalibration::TrivectorTestResponse(int response, int direction, int c
 		else {
 			//incorrect_threshold[confusion_line] = threshold[confusion_line];
 			step_size[confusion_line] = step_size[confusion_line] / 2;
-		}
+		}*/
 		//updateThreshold(correct_threshold[confusion_line], incorrect_threshold[confusion_line], threshold_);
-		float temp_threshold = threshold[confusion_line] + step_size[confusion_line] * dir_stair[confusion_line];
-		if (temp_threshold >= 0.02) {
-			threshold[confusion_line] = temp_threshold;
+		if (temp_threshold > 0.110) temp_threshold = 0.110;
+		if (temp_threshold >= 0.002) {
 			if(reversal_counter[confusion_line]>=6) test_done[confusion_line] = true;
 		}
 		else {
-			threshold[confusion_line] = 0.02;
+			temp_threshold = 0.002;
 			test_done[confusion_line] = true;
 		}
-		subject_responses.Add(rs_string);
+		full_str += FString::FromInt(reversal_counter[confusion_line]) + ",";
+		full_str += FString::FromInt(index[confusion_line]) + ",";
+		full_str += FString::SanitizeFloat(threshold[confusion_line]) + ",";
+		threshold[confusion_line] = temp_threshold;
+		full_str += FString::FromInt(step_size[confusion_line]) + ",azimuth,";
+		full_str += FString::SanitizeFloat(lines_of_confusion[confusion_line]);
+		subject_responses.Add(full_str);
+		index[confusion_line] += 1;
+		//subject_responses.Add(rs_string);
 	}
 	else {
 		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::White, FString::Printf(TEXT("Test done!")));
@@ -396,7 +482,7 @@ void UColorCalibration::updateThreshold(int correct, int incorrect, int& thresho
 void UColorCalibration::vectorCCT(float azimuth, FColor_Luv neutral_luv, FColor_Luv& start, FColor_Luv& end)
 {
 	float center[] = { neutral_luv.u, neutral_luv .v};
-	float r[] = { 0.002f, 0.110f };
+	float r[] = { 0.002f, 1.002f };
 	start.L = 1;
 	start.u = center[0] + r[0] * FMath::Cos(azimuth);
 	start.v = center[1] + r[0] * FMath::Sin(azimuth);

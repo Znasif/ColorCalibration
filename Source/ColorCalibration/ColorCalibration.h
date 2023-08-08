@@ -3,7 +3,7 @@
 #pragma once
 
 
-#define CONFUSION_ALONG 1
+#define CONFUSION_ALONG 3
 
 #include "CoreMinimal.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
@@ -92,8 +92,12 @@ class COLORCALIBRATION_API UColorCalibration : public UObject
 {
 	GENERATED_BODY()
 	TArray<float> threshold;
-	TArray<float> dir_stair;
-	TArray<float> step_size;
+	TArray<bool> dir_stair;
+	float start_intensity;
+	TArray<float> track_peak;
+	TArray<int> step_size;
+	TArray<int> index;
+	float starting_threshold;
 	TArray<int> reversal_counter;
 	float lines_of_confusion[CONFUSION_ALONG];
 	TArray<FString> subject_responses;
@@ -151,7 +155,7 @@ public:
 		void readPrimariesFromCSV(FString csv_filename, TArray<FColor_lxy>& lxys);
 
 	UFUNCTION(BlueprintCallable, Category = "Conversion", meta = (Keywords = "Plates"))
-		void readPlatePointsFromCSV(FString csv_filename, float start_threshold, float start_step_size, TArray<FTransform>& all_plates);
+		void readPlatePointsFromCSV(FString csv_filename, float start_threshold, int start_step_size, TArray<FTransform>& all_plates);
 
 	UFUNCTION(BlueprintCallable, Category = "Custom", meta = (Keywords = "Load"))
 		static bool LoadTextFromFile(FString FileName, TArray<FString>& TextArray);
