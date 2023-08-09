@@ -322,9 +322,11 @@ void UColorCalibration::NeutralPoints(FColor_Luv& Luv_neutral) {
 
 void UColorCalibration::TrivectorTestStimuli(int& confusion_line, int& new_direction)
 {
-	confusion_line = FMath::CeilToInt(CONFUSION_ALONG * FMath::FRand())-1;
+	FRandomStream RandomStream(FMath::Rand());
+	confusion_line = RandomStream.RandRange(0, CONFUSION_ALONG-1);//FMath::CeilToInt(CONFUSION_ALONG * FMath::FRand())-1;
 	if (all_test_done == false){
 		if (test_done[confusion_line] == true) {
+			GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::White, FString::Printf(TEXT("Test done!")));
 			for (int i = 0; i < CONFUSION_ALONG; i++) {
 				if (test_done[i] == false) {
 					confusion_line = i;
@@ -338,7 +340,7 @@ void UColorCalibration::TrivectorTestStimuli(int& confusion_line, int& new_direc
 		//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::White, FString::Printf(TEXT("Test done!")));
 		return;
 	}
-	FRandomStream RandomStream(FMath::Rand());
+	
 	new_direction = RandomStream.RandRange(0, 3);
 	AlterPlateColors(new_direction, confusion_line, threshold[confusion_line]);
 }
@@ -397,12 +399,12 @@ void UColorCalibration::TrivectorTestResponse(int response, int direction, int c
 	//"Patient Input, Patient Response, v_prime_w, orientation, u_prime_w, saturation, Number of Reversals, Index Trial, Threshold, Decreasing Parameter Rate, ConditionName, az";
 	full_str += FString::SanitizeFloat(threshold[confusion_line])+",";
 	if (all_test_done == false) {
-		if (track_peak[confusion_line] == 5) {
+		if (track_peak[confusion_line] >= 5) {
 			temp_threshold = 0.110;
 			test_done[confusion_line] = true;
+			GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, FString::Printf(TEXT("Here now!")));
 		}
-		//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, FString::Printf(TEXT("Response : %s"), *res_str));
-		else if (!correct && threshold[confusion_line] == starting_threshold) {
+		else if (!correct && threshold[confusion_line] >= starting_threshold) {
 			track_peak[confusion_line] += 1;
 			temp_threshold = 0.110;
 		}
@@ -442,7 +444,7 @@ void UColorCalibration::TrivectorTestResponse(int response, int direction, int c
 		//updateThreshold(correct_threshold[confusion_line], incorrect_threshold[confusion_line], threshold_);
 		if (temp_threshold > 0.110) temp_threshold = 0.110;
 		if (temp_threshold >= 0.002) {
-			if(reversal_counter[confusion_line]>=6) test_done[confusion_line] = true;
+			if(reversal_counter[confusion_line]>=4) test_done[confusion_line] = true;
 		}
 		else {
 			temp_threshold = 0.002;
@@ -462,16 +464,20 @@ void UColorCalibration::TrivectorTestResponse(int response, int direction, int c
 		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::White, FString::Printf(TEXT("Test done!")));
 		return;
 	}
-	if (all_test_done == false) {
-		TrivectorTestStimuli(new_confusion_line, new_direction);
-		//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::White, FString::Printf(TEXT("threshold : %d"), threshold[confusion_line]));
-	}
 	bool all_test = true;
 	for (int i = 0; i < CONFUSION_ALONG; i++) {
 		all_test &= test_done[i];
 	}
 	all_test_done = all_test;
-	return;
+	if (all_test_done == false) {
+		TrivectorTestStimuli(new_confusion_line, new_direction);
+		//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::White, FString::Printf(TEXT("threshold : %d"), threshold[confusion_line]));
+	}
+	else {
+		new_confusion_line = 0;
+		new_direction = 0;
+		return;
+	}
 }
 
 void UColorCalibration::updateThreshold(int correct, int incorrect, int& threshold_)

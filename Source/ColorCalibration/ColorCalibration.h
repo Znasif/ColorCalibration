@@ -99,14 +99,13 @@ class COLORCALIBRATION_API UColorCalibration : public UObject
 	TArray<int> index;
 	float starting_threshold;
 	TArray<int> reversal_counter;
+	bool test_done[CONFUSION_ALONG];
 	float lines_of_confusion[CONFUSION_ALONG];
 	TArray<FString> subject_responses;
 public:
 	Eigen::Matrix <double, 3, 3> XYZ_to_RGB;
 	Eigen::Matrix <double, 3, 3> RGB_to_XYZ;
 	float max_lum = 100.0f;
-
-	bool test_done[CONFUSION_ALONG];
 	TArray<AStaticMeshActor*> all_plates;
 
 	UPROPERTY(BlueprintReadWrite, Category = "Custom", meta = (Keywords = "Subject Data"))
